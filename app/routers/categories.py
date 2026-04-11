@@ -16,7 +16,7 @@ def listar_categorias():
 def crear_categoria(payload: CategoryIn):
     """Crear una nueva categoría"""
     try:
-        return crud.crear_categoria(payload.nombre, payload.descripcion)
+        return crud.crear_categoria(payload.nombre)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -33,7 +33,7 @@ def obtener_categoria(category_id: int):
 @router.put("/{category_id}", response_model=CategoryOut)
 def actualizar_categoria(category_id: int, payload: CategoryIn):
     """Actualizar una categoría"""
-    cat = crud.actualizar_categoria(category_id, payload.nombre, payload.descripcion)
+    cat = crud.actualizar_categoria(category_id, payload.nombre)
     if not cat:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return cat

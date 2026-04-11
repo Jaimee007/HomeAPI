@@ -30,6 +30,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             descripcion TEXT,
+            precio REAL NOT NULL DEFAULT 0.0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -68,14 +69,14 @@ def init_database():
     cur.execute('SELECT COUNT(*) FROM categories')
     if cur.fetchone()[0] == 0:
         default_categories = [
-            ('Saludable', 'Comidas bajas en calorías y nutritivas'),
-            ('Rápida', 'Comidas que se preparan rápidamente'),
-            ('Vegetariana', 'Comidas sin carne'),
-            ('Postres', 'Postres y dulces'),
-            ('Carnes', 'Platos con carne'),
-            ('Pescado', 'Platos con pescado'),
+            ('Saludable',),
+            ('Rápida',),
+            ('Vegetariana',),
+            ('Postres',),
+            ('Carnes',),
+            ('Pescado',),
         ]
-        cur.executemany('INSERT INTO categories (nombre, descripcion) VALUES (?, ?)', default_categories)
+        cur.executemany('INSERT INTO categories (nombre) VALUES (?)', default_categories)
     
     conn.commit()
     conn.close()

@@ -4,16 +4,16 @@ from typing import List, Optional, Dict, Any
 
 
 # ==================== CATEGORÍAS ====================
-def crear_categoria(nombre: str, descripcion: Optional[str]) -> Dict[str, Any]:
+def crear_categoria(nombre: str) -> Dict[str, Any]:
     with get_conn() as conn:
         cur = conn.cursor()
         try:
             cur.execute(
-                'INSERT INTO categories (nombre, descripcion) VALUES (?, ?)',
-                (nombre, descripcion)
+                'INSERT INTO categories (nombre) VALUES (?)',
+                (nombre,)
             )
             conn.commit()
-            cur.execute('SELECT id, nombre, descripcion, created_at FROM categories WHERE id = ?', (cur.lastrowid,))
+            cur.execute('SELECT id, nombre FROM categories WHERE id = ?', (cur.lastrowid,))
             return dict(cur.fetchone())
         except sqlite3.IntegrityError:
             raise ValueError(f"Categoría '{nombre}' ya existe")
@@ -22,19 +22,19 @@ def crear_categoria(nombre: str, descripcion: Optional[str]) -> Dict[str, Any]:
 def listar_categorias() -> List[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT id, nombre, descripcion, created_at FROM categories ORDER BY nombre')
+        cur.execute('SELECT id, nombre FROM categories ORDER BY nombre')
         return [dict(r) for r in cur.fetchall()]
 
 
 def obtener_categoria(category_id: int) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT id, nombre, descripcion, created_at FROM categories WHERE id = ?', (category_id,))
+        cur.execute('SELECT id, nombre FROM categories WHERE id = ?', (category_id,))
         row = cur.fetchone()
         return dict(row) if row else None
 
 
-def actualizar_categoria(category_id: int, nombre: Optional[str] = None, descripcion: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def actualizar_categoria(category_id: int, nombre: Optional[str] = None) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute('SELECT id FROM categories WHERE id = ?', (category_id,))
@@ -46,9 +46,6 @@ def actualizar_categoria(category_id: int, nombre: Optional[str] = None, descrip
                 cur.execute('UPDATE categories SET nombre = ? WHERE id = ?', (nombre, category_id))
             except sqlite3.IntegrityError:
                 raise ValueError(f"Categoria '{nombre}' ya existe")
-        
-        if descripcion is not None:
-            cur.execute('UPDATE categories SET descripcion = ? WHERE id = ?', (descripcion, category_id))
         
         conn.commit()
         return obtener_categoria(category_id)
@@ -63,12 +60,12 @@ def eliminar_categoria(category_id: int) -> bool:
 
 
 # ==================== COMIDAS ====================
-def crear_comida(nombre: str, descripcion: Optional[str], category_ids: List[int]) -> Dict[str, Any]:
+def crear_comida(nombre: str, precio: float, category_ids: List[int]) -> Dict[str, Any]:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            'INSERT INTO meals (nombre, descripcion) VALUES (?, ?)',
-            (nombre, descripcion)
+            'INSERT INTO meals (nombre, precio) VALUES (?, ?)',
+            (nombre, precio)
         )
         conn.commit()
         meal_id = cur.lastrowid
@@ -87,13 +84,13 @@ def crear_comida(nombre: str, descripcion: Optional[str], category_ids: List[int
 def listar_comidas() -> List[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT id, nombre, descripcion, created_at, updated_at FROM meals ORDER BY nombre')
+        cur.execute('SELECT id, nombre, precio FROM meals ORDER BY nombre')
         meals = [dict(r) for r in cur.fetchall()]
         
         # Obtener categorías para cada comida
         for meal in meals:
             cur.execute('''
-                SELECT c.id, c.nombre, c.descripcion, c.created_at 
+                SELECT c.id, c.nombre
                 FROM categories c
                 JOIN meal_categories mc ON c.id = mc.category_id
                 WHERE mc.meal_id = ?
@@ -106,14 +103,14 @@ def listar_comidas() -> List[Dict[str, Any]]:
 def obtener_comida(meal_id: int) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT id, nombre, descripcion, created_at, updated_at FROM meals WHERE id = ?', (meal_id,))
+        cur.execute('SELECT id, nombre, precio FROM meals WHERE id = ?', (meal_id,))
         row = cur.fetchone()
         if not row:
             return None
         
         meal = dict(row)
         cur.execute('''
-            SELECT c.id, c.nombre, c.descripcion, c.created_at 
+            SELECT c.id, c.nombre
             FROM categories c
             JOIN meal_categories mc ON c.id = mc.category_id
             WHERE mc.meal_id = ?
@@ -123,7 +120,7 @@ def obtener_comida(meal_id: int) -> Optional[Dict[str, Any]]:
         return meal
 
 
-def actualizar_comida(meal_id: int, nombre: Optional[str] = None, descripcion: Optional[str] = None, category_ids: Optional[List[int]] = None) -> Optional[Dict[str, Any]]:
+def actualizar_comida(meal_id: int, nombre: Optional[str] = None, precio: Optional[float] = None, category_ids: Optional[List[int]] = None) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute('SELECT id FROM meals WHERE id = ?', (meal_id,))
@@ -131,10 +128,10 @@ def actualizar_comida(meal_id: int, nombre: Optional[str] = None, descripcion: O
             return None
         
         if nombre:
-            cur.execute('UPDATE meals SET nombre = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (nombre, meal_id))
+            cur.execute('UPDATE meals SET nombre = ? WHERE id = ?', (nombre, meal_id))
         
-        if descripcion is not None:
-            cur.execute('UPDATE meals SET descripcion = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (descripcion, meal_id))
+        if precio is not None:
+            cur.execute('UPDATE meals SET precio = ? WHERE id = ?', (precio, meal_id))
         
         if category_ids is not None:
             # Eliminar categorías existentes
@@ -162,7 +159,7 @@ def obtener_comidas_por_categoria(category_id: int) -> List[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute('''
-            SELECT m.id, m.nombre, m.descripcion, m.created_at, m.updated_at
+            SELECT m.id, m.nombre, m.precio
             FROM meals m
             JOIN meal_categories mc ON m.id = mc.meal_id
             WHERE mc.category_id = ?
@@ -173,7 +170,7 @@ def obtener_comidas_por_categoria(category_id: int) -> List[Dict[str, Any]]:
         # Obtener categorías para cada comida
         for meal in meals:
             cur.execute('''
-                SELECT c.id, c.nombre, c.descripcion, c.created_at 
+                SELECT c.id, c.nombre
                 FROM categories c
                 JOIN meal_categories mc ON c.id = mc.category_id
                 WHERE mc.meal_id = ?
@@ -253,11 +250,11 @@ def actualizar_dia_menu(daily_menu_id: int, meal_lunch_id: Optional[int] = None,
         if not cur.fetchone():
             return None
         
-        if meal_lunch_id is not None:
-            cur.execute('UPDATE daily_menu SET meal_lunch_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (meal_lunch_id, daily_menu_id))
-        
-        if meal_dinner_id is not None:
-            cur.execute('UPDATE daily_menu SET meal_dinner_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (meal_dinner_id, daily_menu_id))
+        # Actualizar ambos campos en una sola query, permitiendo valores null
+        cur.execute('''UPDATE daily_menu 
+                     SET meal_lunch_id = ?, meal_dinner_id = ?, updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = ?''', 
+                   (meal_lunch_id, meal_dinner_id, daily_menu_id))
         
         conn.commit()
         return obtener_dia_menu(daily_menu_id)

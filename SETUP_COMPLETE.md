@@ -1,18 +1,58 @@
 # HomeAPI - Documentación Completa
 
-## Resumen del Proyecto
+## 📋 Resumen del Proyecto (Actualizado)
 
-Se ha creado una **API FastAPI completa** para gestión de menú semanal con las siguientes características:
+Se ha creado una **API FastAPI completa** para gestión de menú semanal con **interfaz web moderna** y las siguientes características:
 
-- ✅ Gestión de comidas (CRUD)
-- ✅ Gestión de categorías (CRUD)
+### ✨ Backend (API)
+- ✅ Gestión de comidas con **PRECIO** (decimal)
+- ✅ Gestión de categorías simplificadas (solo nombre)
 - ✅ Asignación de comidas a categorías (relación muchos a muchos)
-- ✅ Gestión de menú diario (asignación de comidas y cenas por día)
+- ✅ Gestión de menú diario (almuerzo y cena por día)
 - ✅ Obtención de comidas por categoría
 - ✅ Autenticación por API Key
 - ✅ Base de datos SQLite
 - ✅ Docker y docker-compose listos
 - ✅ Documentación interactiva con Swagger
+
+### 🎨 Frontend (Web)
+- ✅ Calendario semanal **responsive** (2 semanas: actual + próxima)
+- ✅ Día actual marcado visualmente
+- ✅ Almuerzo y Cena por día
+- ✅ Crear nuevas recetas con precio
+- ✅ Gestionar categorías (crear/eliminar)
+- ✅ Asignar recetas a días del calendario
+- ✅ Mostrar precio de cada comida
+- ✅ Calcular costo total de la semana
+- ✅ Paleta de colores pastel
+- ✅ URL automática (localhost dev → homeapi.beadpaws.es prod)
+
+## Cambios Recientes (v2.0)
+
+### Modelos Actualizados
+
+**Categorías:**
+```json
+{
+  "id": 1,
+  "nombre": "Saludable"
+}
+```
+Se eliminó: `descripcion`, `created_at`
+
+**Comidas:**
+```json
+{
+  "id": 1,
+  "nombre": "Pasta Carbonara",
+  "precio": 8.50,
+  "categories": [
+    {"id": 1, "nombre": "Rápida"}
+  ]
+}
+```
+Se eliminó: `descripcion`, `created_at`, `updated_at`
+Se agregó: `precio` (obligatorio)
 
 ## Estructura de Archivos
 

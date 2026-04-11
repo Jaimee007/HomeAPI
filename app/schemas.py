@@ -6,33 +6,30 @@ from datetime import datetime
 # ==================== CATEGORÍAS ====================
 class CategoryIn(BaseModel):
     nombre: str = Field(..., min_length=1)
-    descripcion: Optional[str] = None
 
 
-class CategoryOut(CategoryIn):
+class CategoryOut(BaseModel):
     id: int
-    created_at: datetime
+    nombre: str
 
 
 # ==================== COMIDAS ====================
 class MealIn(BaseModel):
     nombre: str = Field(..., min_length=1)
-    descripcion: Optional[str] = None
+    precio: float = Field(..., gt=0)
     category_ids: List[int] = Field(default_factory=list)
 
 
 class MealOut(BaseModel):
     id: int
     nombre: str
-    descripcion: Optional[str]
+    precio: float
     categories: List[CategoryOut]
-    created_at: datetime
-    updated_at: datetime
 
 
 class MealUpdate(BaseModel):
     nombre: Optional[str] = None
-    descripcion: Optional[str] = None
+    precio: Optional[float] = None
     category_ids: Optional[List[int]] = None
 
 
@@ -50,7 +47,9 @@ class DailyMenuOut(BaseModel):
     mes: int
     año: int
     dia: int
+    meal_lunch_id: Optional[int] = None
     meal_lunch: Optional[MealOut]
+    meal_dinner_id: Optional[int] = None
     meal_dinner: Optional[MealOut]
     created_at: datetime
     updated_at: datetime

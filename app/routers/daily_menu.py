@@ -3,7 +3,7 @@ from typing import List, Optional
 from .. import crud
 from ..schemas import DailyMenuIn, DailyMenuOut, DailyMenuUpdate
 
-router = APIRouter(prefix="/menu", tags=["menu"])
+router = APIRouter(prefix="/daily-menu", tags=["menu"])
 
 
 @router.get("/", response_model=List[DailyMenuOut])
