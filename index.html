@@ -943,7 +943,7 @@
                     item.innerHTML = `
                         <div class="item-info">
                             <div class="item-name">${meal.nombre}</div>
-                            <div class="item-price">${meal.precio.toFixed(2)}€</div>
+                            <div class="item-price">${(meal.precio || 0).toFixed(2)}€</div>
                         </div>
                         <button class="btn-small btn-edit" onclick="app.assignMealToDay(${meal.id})">Asignar</button>
                     `;
@@ -1188,7 +1188,7 @@
                     item.innerHTML = `
                         <div class="item-info">
                             <div class="item-name">${meal.nombre}</div>
-                            <div class="item-price">${meal.precio.toFixed(2)}€</div>
+                            <div class="item-price">${(meal.precio || 0).toFixed(2)}€</div>
                         </div>
                         <div class="item-actions">
                             <button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button>
