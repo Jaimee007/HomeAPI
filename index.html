@@ -887,7 +887,10 @@
 
             getWeek(date) {
                 const current = new Date(date);
-                const first = current.getDate() - current.getDay();
+                // Calcular el lunes de la semana actual
+                // getDay() retorna 0=domingo, 1=lunes, etc.
+                // Para que empiece en lunes: domingo=6, lunes=0, martes=1, etc.
+                const first = current.getDate() - ((current.getDay() + 6) % 7);
                 const week = [];
                 for (let i = 0; i < 7; i++) {
                     const day = new Date(current.setDate(first + i));
