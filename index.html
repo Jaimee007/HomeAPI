@@ -384,6 +384,29 @@
             background: #FFF5FA;
         }
 
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-weight: 400;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            accent-color: var(--pastel-pink);
+            cursor: pointer;
+        }
+
         .search-filter-section {
             display: flex;
             flex-direction: column;
@@ -414,8 +437,7 @@
             gap: 10px;
         }
 
-        .filter-select {
-            flex: 1;
+        .filter-trigger {
             padding: 8px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
@@ -423,9 +445,86 @@
             cursor: pointer;
             background: white;
             transition: border-color 0.2s ease;
+            text-align: left;
+            flex: 1;
         }
 
-        .filter-select:focus {
+        .filter-trigger:hover {
+            border-color: var(--pastel-pink);
+        }
+
+        .filter-popup {
+            display: none;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .filter-popup.active {
+            display: block;
+        }
+
+        .filter-popup-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .filter-popup-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .filter-popup-actions button {
+            flex: 1;
+            padding: 7px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .btn-filter-apply {
+            background: var(--pastel-blue);
+            color: white;
+        }
+
+        .btn-filter-reset {
+            background: var(--light-gray);
+            color: #555;
+        }
+
+        .filter-selected-count {
+            font-size: 0.75rem;
+            color: #777;
+            margin-top: 2px;
+        }
+
+        .meal-item.drag-press-hint::after {
+            content: "Arrastra para mover";
+            display: block;
+            font-size: 0.65rem;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .meal-item.empty {
+            cursor: pointer;
+        }
+
+        .meal-item.filled {
+            cursor: grab;
+        }
+
+        .meal-item.filled:active {
+            cursor: grabbing;
+        }
+
+        .filter-trigger:focus {
             outline: none;
             border-color: var(--pastel-pink);
         }
@@ -727,10 +826,17 @@
             <div class="search-filter-section">
                 <input type="text" id="mealSearchInput" class="search-input" placeholder="🔍 Buscar receta..." onkeyup="app.filterMeals()">
                 <div class="filter-group">
-                    <select id="categoryFilterSelect" class="filter-select" onchange="app.filterMeals()">
-                        <option value="">📂 Todas las categorías</option>
-                    </select>
+                    <button type="button" id="openCategoryFilterBtn" class="filter-trigger" onclick="app.toggleCategoryFilterPopup()">📂 Filtrar por categorías</button>
                     <button class="clear-filters" onclick="app.clearFilters()">Limpiar filtros</button>
+                </div>
+                <div id="categoryFilterSummary" class="filter-selected-count">Sin categorías seleccionadas</div>
+                <div id="categoryFilterPopup" class="filter-popup">
+                    <div class="filter-popup-title">Selecciona categorías</div>
+                    <div id="categoryFilterCheckboxes" class="checkbox-group"></div>
+                    <div class="filter-popup-actions">
+                        <button type="button" class="btn-filter-reset" onclick="app.resetCategoryFilterSelection()">Quitar selección</button>
+                        <button type="button" class="btn-filter-apply" onclick="app.applyCategoryFilterSelection()">Aplicar</button>
+                    </div>
                 </div>
             </div>
 
@@ -774,7 +880,7 @@
                 </div>
                 <div class="form-group">
                     <label>Categorías</label>
-                    <div id="categoriesCheckboxes" class="form-group"></div>
+                    <div id="categoriesCheckboxes" class="checkbox-group"></div>
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-cancel" onclick="closeModal('addMealModal')">Cancelar</button>
@@ -803,7 +909,7 @@
                 </div>
                 <div class="form-group">
                     <label>Categorías</label>
-                    <div id="categoriesCheckboxes2" class="form-group"></div>
+                    <div id="categoriesCheckboxes2" class="checkbox-group"></div>
                 </div>
                 <button type="submit" class="btn-success" style="width: 100%; margin-bottom: 20px;">Agregar Receta</button>
             </form>
@@ -863,7 +969,8 @@
                 this.selectedMealType = null;
                 this.draggedMealData = null;
                 this.filterText = '';
-                this.selectedCategory = '';
+                this.selectedCategoryIds = [];
+                this.pendingCategoryIds = [];
                 console.log('📱 MenuApp constructor iniciado');
                 console.log('📱 API URL:', API_BASE_URL);
                 this.init();
@@ -956,7 +1063,7 @@
 
                 const lunch = menu?.meal_lunch;
                 html += `<div class="meal-slot">
-                    <div class="meal-item" draggable="true" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
+                    <div class="meal-item ${lunch ? 'filled drag-press-hint' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
                         ${lunch ? `
                             <div class="meal-info"><span class="meal-name">${lunch.nombre}</span></div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'lunch')">✕</button>
@@ -966,7 +1073,7 @@
 
                 const dinner = menu?.meal_dinner;
                 html += `<div class="meal-slot">
-                    <div class="meal-item" draggable="true" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
+                    <div class="meal-item ${dinner ? 'filled drag-press-hint' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
                         ${dinner ? `
                             <div class="meal-info"><span class="meal-name">${dinner.nombre}</span></div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'dinner')">✕</button>
@@ -1041,21 +1148,14 @@
 
             openSelectMealModal() {
                 const modal = document.getElementById('selectMealModal');
-                const categorySelect = document.getElementById('categoryFilterSelect');
-                
-                categorySelect.innerHTML = '<option value="">📂 Todas las categorías</option>';
-                this.categories.forEach(cat => {
-                    const count = this.meals.filter(m => m.categories && m.categories.some(c => c.id === cat.id)).length;
-                    const option = document.createElement('option');
-                    option.value = cat.id;
-                    option.textContent = cat.nombre + ' (' + count + ')';
-                    categorySelect.appendChild(option);
-                });
+                this.renderCategoryFilterCheckboxes();
                 
                 this.filterText = '';
-                this.selectedCategory = '';
+                this.selectedCategoryIds = [];
+                this.pendingCategoryIds = [];
                 document.getElementById('mealSearchInput').value = '';
-                categorySelect.value = '';
+                document.getElementById('categoryFilterPopup').classList.remove('active');
+                this.updateCategoryFilterSummary();
                 
                 const tempSection = document.getElementById('tempRecipesSection');
                 tempSection.style.display = 'block';
@@ -1069,7 +1169,6 @@
 
             filterMeals() {
                 this.filterText = document.getElementById('mealSearchInput').value.toLowerCase();
-                this.selectedCategory = document.getElementById('categoryFilterSelect').value;
                 
                 const list = document.getElementById('mealsSelectList');
                 const noResults = document.getElementById('noResultsMessage');
@@ -1081,8 +1180,8 @@
                 this.meals.forEach(meal => {
                     if (this.filterText && !meal.nombre.toLowerCase().includes(this.filterText)) return;
                     
-                    if (this.selectedCategory) {
-                        const hasCategory = meal.categories && meal.categories.some(c => c.id === parseInt(this.selectedCategory));
+                    if (this.selectedCategoryIds.length > 0) {
+                        const hasCategory = meal.categories && meal.categories.some(c => this.selectedCategoryIds.includes(c.id));
                         if (!hasCategory) return;
                     }
                     
@@ -1131,8 +1230,61 @@
 
             clearFilters() {
                 document.getElementById('mealSearchInput').value = '';
-                document.getElementById('categoryFilterSelect').value = '';
+                this.selectedCategoryIds = [];
+                this.pendingCategoryIds = [];
+                this.setCategoryFilterCheckboxes(this.pendingCategoryIds);
+                this.updateCategoryFilterSummary();
                 this.filterMeals();
+            }
+
+            renderCategoryFilterCheckboxes() {
+                const container = document.getElementById('categoryFilterCheckboxes');
+                container.innerHTML = '';
+                this.categories.forEach(cat => {
+                    const label = document.createElement('label');
+                    label.className = 'checkbox-item';
+                    const checked = this.pendingCategoryIds.includes(cat.id) ? 'checked' : '';
+                    label.innerHTML = `<input type="checkbox" value="${cat.id}" ${checked}><span>${cat.nombre}</span>`;
+                    container.appendChild(label);
+                });
+            }
+
+            setCategoryFilterCheckboxes(ids) {
+                const checks = document.querySelectorAll('#categoryFilterCheckboxes input[type="checkbox"]');
+                checks.forEach(cb => {
+                    cb.checked = ids.includes(parseInt(cb.value));
+                });
+            }
+
+            toggleCategoryFilterPopup() {
+                const popup = document.getElementById('categoryFilterPopup');
+                popup.classList.toggle('active');
+            }
+
+            resetCategoryFilterSelection() {
+                this.pendingCategoryIds = [];
+                this.setCategoryFilterCheckboxes(this.pendingCategoryIds);
+            }
+
+            applyCategoryFilterSelection() {
+                const selected = Array.from(document.querySelectorAll('#categoryFilterCheckboxes input:checked')).map(cb => parseInt(cb.value));
+                this.pendingCategoryIds = selected;
+                this.selectedCategoryIds = [...selected];
+                this.updateCategoryFilterSummary();
+                document.getElementById('categoryFilterPopup').classList.remove('active');
+                this.filterMeals();
+            }
+
+            updateCategoryFilterSummary() {
+                const summary = document.getElementById('categoryFilterSummary');
+                if (this.selectedCategoryIds.length === 0) {
+                    summary.textContent = 'Sin categorías seleccionadas';
+                    return;
+                }
+                const names = this.categories
+                    .filter(c => this.selectedCategoryIds.includes(c.id))
+                    .map(c => c.nombre);
+                summary.textContent = `Filtrando por: ${names.join(', ')}`;
             }
 
             renderTempRecipes() {
@@ -1179,19 +1331,29 @@
 
             handleDragStart(e) {
                 const mealItem = e.target.closest('.meal-item');
-                const isEmpty = mealItem.innerHTML.includes('span') || mealItem.innerHTML.includes('Almuerzo') || mealItem.innerHTML.includes('Cena');
-                if (!isEmpty) {
-                    mealItem.classList.add('dragging');
-                    this.draggedMealData = {
-                        sourceDate: mealItem.dataset.date,
-                        sourceType: mealItem.dataset.type,
-                        mealName: mealItem.textContent
-                    };
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', this.draggedMealData.mealName);
-                } else {
+                if (!mealItem) {
                     e.preventDefault();
+                    return;
                 }
+
+                const sourceDate = mealItem.dataset.date;
+                const sourceType = mealItem.dataset.type;
+                const sourceMenu = this.dailyMenus[sourceDate];
+                const sourceMeal = sourceType === 'lunch' ? sourceMenu?.meal_lunch : sourceMenu?.meal_dinner;
+
+                if (!sourceMeal) {
+                    e.preventDefault();
+                    return;
+                }
+
+                mealItem.classList.add('dragging');
+                this.draggedMealData = {
+                    sourceDate,
+                    sourceType,
+                    mealName: sourceMeal.nombre
+                };
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', sourceMeal.nombre);
             }
 
             handleDragEnd(e) {
@@ -1205,6 +1367,13 @@
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
                     mealItem.classList.add('drag-over');
+                }
+            }
+
+            handleDragLeave(e) {
+                const mealItem = e.target.closest('.meal-item');
+                if (mealItem) {
+                    mealItem.classList.remove('drag-over');
                 }
             }
 
@@ -1242,8 +1411,8 @@
                 const targetMealKey = targetType === 'lunch' ? 'meal_lunch' : 'meal_dinner';
                 const targetMealIdKey = targetType === 'lunch' ? 'meal_lunch_id' : 'meal_dinner_id';
                 const targetMeal = targetMenu ? targetMenu[targetMealKey] : null;
-                
-                if (sourceMeal.isTemp) {
+
+                if (sourceMeal?.isTemp || targetMeal?.isTemp) {
                     if (!targetMenu) {
                         const parts = targetDate.split('-');
                         this.dailyMenus[targetDate] = {
@@ -1258,27 +1427,34 @@
                             isTemp: true
                         };
                     }
-                    
-                    if (targetMeal && targetMeal.isTemp) {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = targetMeal;
-                    } else if (targetMeal) {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = targetMeal;
-                        await this.updateDailyMenu(sourceMenu.id, {[sourceMealIdKey]: targetMeal.id});
-                    } else {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = null;
-                    }
+                    this.dailyMenus[targetDate][targetMealKey] = sourceMeal || null;
+                    this.dailyMenus[sourceDate][sourceMealKey] = targetMeal || null;
                 } else {
+                    const sourceOtherIdKey = sourceType === 'lunch' ? 'meal_dinner_id' : 'meal_lunch_id';
+                    const targetOtherIdKey = targetType === 'lunch' ? 'meal_dinner_id' : 'meal_lunch_id';
+
                     if (!targetMenu) {
                         const parts = targetDate.split('-');
-                        const createData = targetType === 'lunch' ? { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: sourceMeal.id, meal_dinner_id: null } : { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: null, meal_dinner_id: sourceMeal.id };
+                        const createData = targetType === 'lunch'
+                            ? { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: sourceMeal.id, meal_dinner_id: null }
+                            : { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: null, meal_dinner_id: sourceMeal.id };
                         await this.createDailyMenu(createData);
+
+                        await this.updateDailyMenu(sourceMenu.id, {
+                            [sourceMealIdKey]: null,
+                            [sourceOtherIdKey]: sourceMenu[sourceOtherIdKey] || null
+                        });
+                    } else {
+                        await this.updateDailyMenu(sourceMenu.id, {
+                            [sourceMealIdKey]: targetMeal ? targetMeal.id : null,
+                            [sourceOtherIdKey]: sourceMenu[sourceOtherIdKey] || null
+                        });
+
+                        await this.updateDailyMenu(targetMenu.id, {
+                            [targetMealIdKey]: sourceMeal.id,
+                            [targetOtherIdKey]: targetMenu[targetOtherIdKey] || null
+                        });
                     }
-                    
-                    const sourceMenuOtherMealIdKey = sourceType === 'lunch' ? 'meal_dinner_id' : 'meal_lunch_id';
-                    await this.updateDailyMenu(sourceMenu.id, {[sourceMealIdKey]: null, [sourceMenuOtherMealIdKey]: sourceMenu[sourceMenuOtherMealIdKey] || null});
                 }
                 
                 await this.loadData();
