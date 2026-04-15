@@ -504,14 +504,6 @@
             margin-top: 2px;
         }
 
-        .meal-item.drag-press-hint::after {
-            content: "Arrastra para mover";
-            display: block;
-            font-size: 0.65rem;
-            color: #999;
-            margin-top: 4px;
-        }
-
         .meal-item.empty {
             cursor: pointer;
         }
@@ -1063,7 +1055,7 @@
 
                 const lunch = menu?.meal_lunch;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${lunch ? 'filled drag-press-hint' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
+                    <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
                         ${lunch ? `
                             <div class="meal-info"><span class="meal-name">${lunch.nombre}</span></div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'lunch')">✕</button>
@@ -1073,7 +1065,7 @@
 
                 const dinner = menu?.meal_dinner;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${dinner ? 'filled drag-press-hint' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
+                    <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
                         ${dinner ? `
                             <div class="meal-info"><span class="meal-name">${dinner.nombre}</span></div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'dinner')">✕</button>
@@ -1445,15 +1437,26 @@
                             [sourceOtherIdKey]: sourceMenu[sourceOtherIdKey] || null
                         });
                     } else {
-                        await this.updateDailyMenu(sourceMenu.id, {
-                            [sourceMealIdKey]: targetMeal ? targetMeal.id : null,
-                            [sourceOtherIdKey]: sourceMenu[sourceOtherIdKey] || null
-                        });
+                        if (sourceMenu.id === targetMenu.id) {
+                            await this.updateDailyMenu(sourceMenu.id, {
+                                meal_lunch_id: sourceType === 'lunch'
+                                    ? (targetMeal ? targetMeal.id : null)
+                                    : sourceMeal.id,
+                                meal_dinner_id: sourceType === 'dinner'
+                                    ? (targetMeal ? targetMeal.id : null)
+                                    : sourceMeal.id
+                            });
+                        } else {
+                            await this.updateDailyMenu(sourceMenu.id, {
+                                [sourceMealIdKey]: targetMeal ? targetMeal.id : null,
+                                [sourceOtherIdKey]: sourceMenu[sourceOtherIdKey] || null
+                            });
 
-                        await this.updateDailyMenu(targetMenu.id, {
-                            [targetMealIdKey]: sourceMeal.id,
-                            [targetOtherIdKey]: targetMenu[targetOtherIdKey] || null
-                        });
+                            await this.updateDailyMenu(targetMenu.id, {
+                                [targetMealIdKey]: sourceMeal.id,
+                                [targetOtherIdKey]: targetMenu[targetOtherIdKey] || null
+                            });
+                        }
                     }
                 }
                 
