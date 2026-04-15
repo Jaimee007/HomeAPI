@@ -155,7 +155,7 @@
             color: #888;
             min-width: 50px;
             text-transform: uppercase;
-            display: none;
+            display: none; /* Ocultar labels */
         }
 
         .meal-item {
@@ -165,7 +165,7 @@
             font-size: 0.75rem;
             background: white;
             border: 1px solid var(--border-color);
-            cursor: grab;
+            cursor: pointer;
             transition: all 0.2s ease;
             min-height: 40px;
             display: flex;
@@ -182,17 +182,6 @@
             background: #FFF5FA;
         }
 
-        .meal-item.dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-        }
-
-        .meal-item.drag-over {
-            border: 2px dashed var(--pastel-pink);
-            background: #FFF0F8;
-            box-shadow: inset 0 0 8px rgba(255, 179, 217, 0.3);
-        }
-
         .meal-info {
             flex: 1;
             line-height: 1.3;
@@ -207,7 +196,7 @@
             color: #FF69B4;
             font-weight: 600;
             margin-left: 0;
-            display: none;
+            display: none; /* Ocultar precio */
         }
 
         .add-btn {
@@ -299,6 +288,7 @@
             box-shadow: 0 4px 8px rgba(95, 179, 95, 0.3);
         }
 
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -384,6 +374,217 @@
             background: #FFF5FA;
         }
 
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+            accent-color: var(--pastel-pink);
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 400;
+            font-size: 0.85rem;
+        }
+
+        .modal-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel {
+            background: var(--light-gray);
+            color: #555;
+        }
+
+        .btn-cancel:hover {
+            background: #ddd;
+        }
+
+        /* Lista de comidas/categorías */
+        .items-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .item {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .item-price {
+            font-size: 0.8rem;
+            color: #FF69B4;
+            font-weight: 500;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-edit {
+            background: var(--pastel-yellow);
+            color: #555;
+        }
+
+        .btn-edit:hover {
+            background: #FFD700;
+        }
+
+        .btn-delete {
+            background: #FFB3B3;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #FF6B6B;
+        }
+
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+
+        .error {
+            background: #FFB3B3;
+            color: #8B0000;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            background: var(--pastel-green);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .days-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .calendar-section {
+                padding: 15px;
+            }
+
+            .modal-content {
+                max-width: 90%;
+            }
+        }
+
+        .meal-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-remove-meal {
+            background: white;
+            border: 1px solid #FFB3B3;
+            color: #FF6B6B;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-self: flex-end;
+            margin-top: 4px;
+        }
+
+        .btn-remove-meal:hover {
+            background: #FFB3B3;
+            color: white;
+        }
+
+        /* Estilos para Drag & Drop */
+        .meal-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .meal-item.drag-over {
+            border: 2px dashed var(--pastel-pink);
+            background: #FFF0F8;
+            box-shadow: inset 0 0 8px rgba(255, 179, 217, 0.3);
+        }
+
+        .meal-item[draggable="true"] {
+            cursor: grab;
+        }
+
+        .meal-item[draggable="true"]:hover {
+            border-color: var(--pastel-pink);
+        }
+
+        /* Estilos para búsqueda y filtros */
         .search-filter-section {
             display: flex;
             flex-direction: column;
@@ -445,7 +646,55 @@
             background: #FFD700;
         }
 
+        /* Insignias de categoría */
+        .category-badge {
+            display: inline-block;
+            background: var(--pastel-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-top: 2px;
+        }
+
+        .meal-item-with-category .meal-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meal-name {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .meal-categories {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        /* Recetas temporales */
+        .temp-recipe {
+            font-style: italic;
+        }
+
+        .temp-badge {
+            background: var(--pastel-purple);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            margin-left: 4px;
+            text-transform: uppercase;
+        }
+
         .temp-recipes-section {
+            background: var(--pastel-purple);
             background: rgba(217, 179, 255, 0.2);
             padding: 12px;
             border-radius: 8px;
@@ -532,155 +781,6 @@
             color: #999;
             padding: 20px 10px;
             font-size: 0.9rem;
-        }
-
-        .items-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .item {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.9rem;
-        }
-
-        .item:last-child {
-            border-bottom: none;
-        }
-
-        .item-info {
-            flex: 1;
-        }
-
-        .item-name {
-            font-weight: 600;
-            color: #555;
-        }
-
-        .temp-recipe {
-            font-style: italic;
-        }
-
-        .temp-badge {
-            background: var(--pastel-purple);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 0.6rem;
-            font-weight: 700;
-            margin-left: 4px;
-            text-transform: uppercase;
-        }
-
-        .item-price {
-            font-size: 0.8rem;
-            color: #FF69B4;
-            font-weight: 500;
-        }
-
-        .item-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-small {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-edit {
-            background: var(--pastel-yellow);
-            color: #555;
-        }
-
-        .btn-edit:hover {
-            background: #FFD700;
-        }
-
-        .btn-delete {
-            background: #FFB3B3;
-            color: white;
-        }
-
-        .btn-delete:hover {
-            background: #FF6B6B;
-        }
-
-        .modal-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .modal-buttons button {
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .btn-cancel {
-            background: var(--light-gray);
-            color: #555;
-        }
-
-        .btn-cancel:hover {
-            background: #ddd;
-        }
-
-        .btn-remove-meal {
-            background: white;
-            border: 1px solid #FFB3B3;
-            color: #FF6B6B;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            align-self: flex-end;
-            margin-top: 4px;
-        }
-
-        .btn-remove-meal:hover {
-            background: #FFB3B3;
-            color: white;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            header h1 {
-                font-size: 1.8rem;
-            }
-
-            .days-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .calendar-section {
-                padding: 15px;
-            }
-
-            .modal-content {
-                max-width: 90%;
-            }
         }
     </style>
 </head>
@@ -774,7 +874,7 @@
                 </div>
                 <div class="form-group">
                     <label>Categorías</label>
-                    <div id="categoriesCheckboxes" class="form-group"></div>
+                    <div id="categoriesCheckboxes" class="checkbox-group"></div>
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-cancel" onclick="closeModal('addMealModal')">Cancelar</button>
@@ -803,7 +903,7 @@
                 </div>
                 <div class="form-group">
                     <label>Categorías</label>
-                    <div id="categoriesCheckboxes2" class="form-group"></div>
+                    <div id="categoriesCheckboxes2" class="checkbox-group"></div>
                 </div>
                 <button type="submit" class="btn-success" style="width: 100%; margin-bottom: 20px;">Agregar Receta</button>
             </form>
@@ -836,15 +936,19 @@
     </div>
 
     <script>
+        // Detectar URL base de la API automáticamente
         const getApiBaseUrl = () => {
+            // Si está abierto como archivo local (file://), usar localhost
             if (window.location.protocol === 'file:') {
                 console.log('📍 Detectado: Archivo local → usando localhost');
                 return 'http://localhost:8000';
             }
+            // Si estamos en localhost, usar localhost
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 console.log('📍 Detectado: Localhost → usando localhost');
                 return 'http://localhost:8000';
             }
+            // En producción, usar el dominio real
             console.log('📍 Detectado: Producción → usando homeapi.beadpaws.es');
             return 'https://homeapi.beadpaws.es';
         };
@@ -864,49 +968,80 @@
                 this.draggedMealData = null;
                 this.filterText = '';
                 this.selectedCategory = '';
-                console.log('📱 MenuApp constructor iniciado');
-                console.log('📱 API URL:', API_BASE_URL);
+                console.log('📱 [DEBUG] MenuApp constructor iniciado');
+                console.log('📱 [DEBUG] API URL:', API_BASE_URL);
+                console.log('📱 [DEBUG] API Key configurada:', API_KEY ? 'SÍ' : 'NO');
                 this.init();
             }
 
             async init() {
                 try {
-                    console.log('🔄 Cargando datos de la API...');
+                    console.log('🔄 [DEBUG] Cargando datos de la API...');
                     await this.loadData();
-                    console.log('✅ Datos cargados');
+                    console.log('✅ [DEBUG] Datos cargados exitosamente');
+                    console.log('✅ [DEBUG] Comidas:', this.meals.length);
+                    console.log('✅ [DEBUG] Categorías:', this.categories.length);
+                    
+                    console.log('🎨 [DEBUG] Renderizando calendario...');
                     this.renderCalendar();
+                    console.log('✅ [DEBUG] Calendario renderizado');
+                    
+                    console.log('🔗 [DEBUG] Configurando event listeners...');
                     this.setupEventListeners();
-                    console.log('🎉 ¡MenuApp inicializado correctamente!');
+                    console.log('✅ [DEBUG] Event listeners configurados');
+                    
+                    console.log('🎉 [DEBUG] ¡MenuApp inicializado correctamente!');
+                    console.log('💡 [DEBUG] Ahora puedes hacer clic en "+ Nueva Receta" o "⚙️ Categorías"');
                 } catch (error) {
-                    console.error('❌ Error en init():', error);
+                    console.error('❌ [ERROR] Error en init():', error);
                 }
             }
 
             async loadData() {
                 try {
+                    console.log('📥 [DEBUG] Iniciando fetch de comidas...');
                     const mealsRes = await fetch(`${API_BASE_URL}/meals`, { headers: { 'X-API-Key': API_KEY } });
+                    console.log('📥 [DEBUG] Respuesta de meals:', mealsRes.status, mealsRes.statusText);
+                    
+                    console.log('📥 [DEBUG] Iniciando fetch de categorías...');
                     const categoriesRes = await fetch(`${API_BASE_URL}/categories`, { headers: { 'X-API-Key': API_KEY } });
+                    console.log('📥 [DEBUG] Respuesta de categories:', categoriesRes.status, categoriesRes.statusText);
+                    
+                    console.log('📥 [DEBUG] Iniciando fetch de menú diario...');
                     const menusRes = await fetch(`${API_BASE_URL}/daily-menu`, { headers: { 'X-API-Key': API_KEY } });
+                    console.log('📥 [DEBUG] Respuesta de daily-menu:', menusRes.status, menusRes.statusText);
 
                     this.meals = await mealsRes.json();
                     this.categories = await categoriesRes.json();
                     
+                    // Manejo especial para daily-menu - puede ser 404 si no hay datos
                     let menus = [];
                     if (menusRes.ok) {
                         menus = await menusRes.json();
+                        console.log('✅ [DEBUG] Daily-menu obtenido:', menus);
+                    } else {
+                        console.log('⚠️ [DEBUG] Daily-menu retornó', menusRes.status, '- iniciando con array vacío');
                     }
                     
-                    this.dailyMenus = {};
+                    console.log('✅ [DEBUG] Meals parseadas:', this.meals);
+                    console.log('✅ [DEBUG] Categories parseadas:', this.categories);
+                    console.log('✅ [DEBUG] Menus parseadas:', menus);
+                    
+                    // Procesar menus si es un array válido
                     if (Array.isArray(menus)) {
                         menus.forEach(menu => {
                             const key = `${menu.año}-${String(menu.mes).padStart(2, '0')}-${String(menu.dia).padStart(2, '0')}`;
                             this.dailyMenus[key] = menu;
                         });
+                        console.log('✅ [DEBUG] Daily menus procesados:', Object.keys(this.dailyMenus).length);
                     }
 
                     this.updateSummary();
+                    console.log('✅ [DEBUG] Resumen actualizado');
                 } catch (error) {
-                    console.error('❌ Error cargando datos:', error);
+                    console.error('❌ [ERROR] Error cargando datos:', error);
+                    console.error('❌ [ERROR] Detalles:', error.message);
+                    console.error('❌ [ERROR] Stack:', error.stack);
                 }
             }
 
@@ -954,21 +1089,23 @@
 
                 html += '<div class="meals-container">';
 
+                // Almuerzo
                 const lunch = menu?.meal_lunch;
                 html += `<div class="meal-slot">
-                    <div class="meal-item" draggable="true" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
+                    <div class="meal-item" onclick="app.selectMeal(this, '${key}', 'lunch')">
                         ${lunch ? `
-                            <div class="meal-info"><span class="meal-name">${lunch.nombre}</span></div>
+                            <div class="meal-info">${lunch.nombre}</div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'lunch')">✕</button>
                         ` : '<span style="color: #ccc;">+ Almuerzo</span>'}
                     </div>
                 </div>`;
 
+                // Cena
                 const dinner = menu?.meal_dinner;
                 html += `<div class="meal-slot">
-                    <div class="meal-item" draggable="true" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
+                    <div class="meal-item" onclick="app.selectMeal(this, '${key}', 'dinner')">
                         ${dinner ? `
-                            <div class="meal-info"><span class="meal-name">${dinner.nombre}</span></div>
+                            <div class="meal-info">${dinner.nombre}</div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'dinner')">✕</button>
                         ` : '<span style="color: #ccc;">+ Cena</span>'}
                     </div>
@@ -981,7 +1118,9 @@
 
             isToday(date) {
                 const today = new Date();
-                return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+                return date.getDate() === today.getDate() &&
+                       date.getMonth() === today.getMonth() &&
+                       date.getFullYear() === today.getFullYear();
             }
 
             getDateKey(date) {
@@ -997,6 +1136,9 @@
 
             getWeek(date) {
                 const current = new Date(date);
+                // Calcular el lunes de la semana actual
+                // getDay() retorna 0=domingo, 1=lunes, etc.
+                // Para que empiece en lunes: domingo=6, lunes=0, martes=1, etc.
                 const first = current.getDate() - ((current.getDay() + 6) % 7);
                 const week = [];
                 for (let i = 0; i < 7; i++) {
@@ -1025,6 +1167,8 @@
                 const mealId = type === 'lunch' ? menu.meal_lunch_id : menu.meal_dinner_id;
                 const otherMealId = type === 'lunch' ? menu.meal_dinner_id : menu.meal_lunch_id;
 
+                console.log(`🗑️ [DEBUG] Removiendo ${type}. mealId=${mealId}, otherMealId=${otherMealId}`);
+
                 if (!mealId && !otherMealId) {
                     delete this.dailyMenus[dateKey];
                     await this.deleteDailyMenu(menu.id);
@@ -1032,6 +1176,7 @@
                     const updateData = type === 'lunch' 
                         ? { meal_lunch_id: null, meal_dinner_id: otherMealId || null }
                         : { meal_lunch_id: otherMealId || null, meal_dinner_id: null };
+                    console.log(`📤 [DEBUG] Enviando update:`, updateData);
                     await this.updateDailyMenu(menu.id, updateData);
                 }
 
@@ -1041,306 +1186,52 @@
 
             openSelectMealModal() {
                 const modal = document.getElementById('selectMealModal');
-                const categorySelect = document.getElementById('categoryFilterSelect');
-                
-                categorySelect.innerHTML = '<option value="">📂 Todas las categorías</option>';
-                this.categories.forEach(cat => {
-                    const count = this.meals.filter(m => m.categories && m.categories.some(c => c.id === cat.id)).length;
-                    const option = document.createElement('option');
-                    option.value = cat.id;
-                    option.textContent = cat.nombre + ' (' + count + ')';
-                    categorySelect.appendChild(option);
+                const list = document.getElementById('mealsSelectList');
+                list.innerHTML = '';
+
+                this.meals.forEach(meal => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerHTML = `
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-price">${(meal.precio || 0).toFixed(2)}€</div>
+                        </div>
+                        <button class="btn-small btn-edit" onclick="app.assignMealToDay(${meal.id})">Asignar</button>
+                    `;
+                    list.appendChild(item);
                 });
-                
-                this.filterText = '';
-                this.selectedCategory = '';
-                document.getElementById('mealSearchInput').value = '';
-                categorySelect.value = '';
-                
-                const tempSection = document.getElementById('tempRecipesSection');
-                tempSection.style.display = 'block';
-                if (this.tempRecipes.length > 0) {
-                    this.renderTempRecipes();
-                }
-                
-                this.filterMeals();
+
                 modal.classList.add('active');
             }
 
-            filterMeals() {
-                this.filterText = document.getElementById('mealSearchInput').value.toLowerCase();
-                this.selectedCategory = document.getElementById('categoryFilterSelect').value;
-                
-                const list = document.getElementById('mealsSelectList');
-                const noResults = document.getElementById('noResultsMessage');
-                list.innerHTML = '';
-                
-                const grouped = {};
-                const noCategoryMeals = [];
-                
-                this.meals.forEach(meal => {
-                    if (this.filterText && !meal.nombre.toLowerCase().includes(this.filterText)) return;
-                    
-                    if (this.selectedCategory) {
-                        const hasCategory = meal.categories && meal.categories.some(c => c.id === parseInt(this.selectedCategory));
-                        if (!hasCategory) return;
-                    }
-                    
-                    if (meal.categories && meal.categories.length > 0) {
-                        const categoryName = meal.categories[0].nombre;
-                        if (!grouped[categoryName]) grouped[categoryName] = [];
-                        grouped[categoryName].push(meal);
-                    } else {
-                        noCategoryMeals.push(meal);
-                    }
-                });
-                
-                let hasItems = false;
-                Object.keys(grouped).sort().forEach(categoryName => {
-                    const header = document.createElement('div');
-                    header.className = 'meal-group-header';
-                    header.innerHTML = categoryName + ' <span class="meal-count">' + grouped[categoryName].length + '</span>';
-                    list.appendChild(header);
-                    
-                    grouped[categoryName].forEach(meal => {
-                        const item = document.createElement('div');
-                        item.className = 'item';
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div>';
-                        list.appendChild(item);
-                        hasItems = true;
-                    });
-                });
-                
-                if (noCategoryMeals.length > 0) {
-                    const header = document.createElement('div');
-                    header.className = 'meal-group-header';
-                    header.innerHTML = 'Sin categoría <span class="meal-count">' + noCategoryMeals.length + '</span>';
-                    list.appendChild(header);
-                    
-                    noCategoryMeals.forEach(meal => {
-                        const item = document.createElement('div');
-                        item.className = 'item';
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div>';
-                        list.appendChild(item);
-                        hasItems = true;
-                    });
-                }
-                
-                noResults.style.display = hasItems ? 'none' : 'block';
-            }
-
-            clearFilters() {
-                document.getElementById('mealSearchInput').value = '';
-                document.getElementById('categoryFilterSelect').value = '';
-                this.filterMeals();
-            }
-
-            renderTempRecipes() {
-                const container = document.getElementById('tempRecipesList');
-                container.innerHTML = '';
-                
-                this.tempRecipes.forEach((recipe, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'item';
-                    item.innerHTML = '<div class="item-info"><div class="item-name temp-recipe">' + recipe.nombre + ' <span class="temp-badge">TEMP</span></div><div class="item-price">' + recipe.precio.toFixed(2) + '€</div></div><div class="item-actions"><button class="btn-small btn-edit" onclick="app.assignTempRecipe(' + index + ')">Asignar</button><button class="btn-small btn-delete" onclick="app.deleteTempRecipe(' + index + ')">Eliminar</button></div>';
-                    container.appendChild(item);
-                });
-            }
-
-            addTempRecipe() {
-                const name = document.getElementById('tempRecipeName').value.trim();
-                const price = parseFloat(document.getElementById('tempRecipePrice').value);
-                
-                if (!name || isNaN(price) || price < 0) {
-                    alert('Por favor ingresa nombre y precio válidos');
-                    return;
-                }
-                
-                this.tempRecipes.push({
-                    nombre: name,
-                    precio: price,
-                    isTemp: true
-                });
-                
-                document.getElementById('tempRecipeName').value = '';
-                document.getElementById('tempRecipePrice').value = '';
-                this.renderTempRecipes();
-            }
-
-            deleteTempRecipe(index) {
-                this.tempRecipes.splice(index, 1);
-                this.renderTempRecipes();
-            }
-
-            assignTempRecipe(index) {
-                const recipe = this.tempRecipes[index];
-                this.assignMealToDay(-1, true, recipe);
-            }
-
-            handleDragStart(e) {
-                const mealItem = e.target.closest('.meal-item');
-                const isEmpty = mealItem.innerHTML.includes('span') || mealItem.innerHTML.includes('Almuerzo') || mealItem.innerHTML.includes('Cena');
-                if (!isEmpty) {
-                    mealItem.classList.add('dragging');
-                    this.draggedMealData = {
-                        sourceDate: mealItem.dataset.date,
-                        sourceType: mealItem.dataset.type,
-                        mealName: mealItem.textContent
-                    };
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', this.draggedMealData.mealName);
-                } else {
-                    e.preventDefault();
-                }
-            }
-
-            handleDragEnd(e) {
-                const mealItem = e.target.closest('.meal-item');
-                if (mealItem) mealItem.classList.remove('dragging');
-            }
-
-            handleDragOver(e) {
-                const mealItem = e.target.closest('.meal-item');
-                if (mealItem && this.draggedMealData) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    mealItem.classList.add('drag-over');
-                }
-            }
-
-            handleDrop(e) {
-                e.preventDefault();
-                const targetMealItem = e.target.closest('.meal-item');
-                
-                if (!targetMealItem || !this.draggedMealData) return;
-                
-                targetMealItem.classList.remove('drag-over');
-                
-                const targetDate = targetMealItem.dataset.date;
-                const targetType = targetMealItem.dataset.type;
-                
-                if (targetDate === this.draggedMealData.sourceDate && targetType === this.draggedMealData.sourceType) {
-                    return;
-                }
-                
-                this.swapOrMoveMeal(this.draggedMealData.sourceDate, this.draggedMealData.sourceType, targetDate, targetType);
-                this.draggedMealData = null;
-            }
-
-            async swapOrMoveMeal(sourceDate, sourceType, targetDate, targetType) {
-                const sourceMenu = this.dailyMenus[sourceDate];
-                const targetMenu = this.dailyMenus[targetDate];
-                
-                if (!sourceMenu) return;
-                
-                const sourceMealKey = sourceType === 'lunch' ? 'meal_lunch' : 'meal_dinner';
-                const sourceMealIdKey = sourceType === 'lunch' ? 'meal_lunch_id' : 'meal_dinner_id';
-                const sourceMeal = sourceMenu[sourceMealKey];
-                
-                if (!sourceMeal) return;
-                
-                const targetMealKey = targetType === 'lunch' ? 'meal_lunch' : 'meal_dinner';
-                const targetMealIdKey = targetType === 'lunch' ? 'meal_lunch_id' : 'meal_dinner_id';
-                const targetMeal = targetMenu ? targetMenu[targetMealKey] : null;
-                
-                if (sourceMeal.isTemp) {
-                    if (!targetMenu) {
-                        const parts = targetDate.split('-');
-                        this.dailyMenus[targetDate] = {
-                            id: 'temp_menu_' + Date.now(),
-                            año: parseInt(parts[0]),
-                            mes: parseInt(parts[1]),
-                            dia: parseInt(parts[2]),
-                            meal_lunch_id: null,
-                            meal_dinner_id: null,
-                            meal_lunch: null,
-                            meal_dinner: null,
-                            isTemp: true
-                        };
-                    }
-                    
-                    if (targetMeal && targetMeal.isTemp) {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = targetMeal;
-                    } else if (targetMeal) {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = targetMeal;
-                        await this.updateDailyMenu(sourceMenu.id, {[sourceMealIdKey]: targetMeal.id});
-                    } else {
-                        this.dailyMenus[targetDate][targetMealKey] = sourceMeal;
-                        sourceMenu[sourceMealKey] = null;
-                    }
-                } else {
-                    if (!targetMenu) {
-                        const parts = targetDate.split('-');
-                        const createData = targetType === 'lunch' ? { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: sourceMeal.id, meal_dinner_id: null } : { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: null, meal_dinner_id: sourceMeal.id };
-                        await this.createDailyMenu(createData);
-                    }
-                    
-                    const sourceMenuOtherMealIdKey = sourceType === 'lunch' ? 'meal_dinner_id' : 'meal_lunch_id';
-                    await this.updateDailyMenu(sourceMenu.id, {[sourceMealIdKey]: null, [sourceMenuOtherMealIdKey]: sourceMenu[sourceMenuOtherMealIdKey] || null});
-                }
-                
-                await this.loadData();
-                this.renderCalendar();
-                this.updateSummary();
-            }
-
-            async assignMealToDay(mealId, isTemp = false, tempRecipe = null) {
-                const parts = this.selectedDay.split('-');
+            async assignMealToDay(mealId) {
+                const [year, month, day] = this.selectedDay.split('-');
                 const menu = this.dailyMenus[this.selectedDay];
-                
-                let mealData = null;
-                if (isTemp && tempRecipe) {
-                    mealData = {
-                        id: 'temp_' + Date.now(),
-                        nombre: tempRecipe.nombre,
-                        precio: tempRecipe.precio,
-                        isTemp: true
-                    };
-                } else if (mealId === -1) {
-                    return;
-                } else {
-                    mealData = this.meals.find(m => m.id === mealId);
-                }
+                const meal = this.meals.find(m => m.id === mealId);
 
-                if (!mealData) return;
+                if (!meal) return;
 
-                if (isTemp) {
-                    if (!this.dailyMenus[this.selectedDay]) {
-                        this.dailyMenus[this.selectedDay] = {
-                            id: 'temp_menu_' + Date.now(),
-                            año: parseInt(parts[0]),
-                            mes: parseInt(parts[1]),
-                            dia: parseInt(parts[2]),
-                            meal_lunch_id: null,
-                            meal_dinner_id: null,
-                            meal_lunch: null,
-                            meal_dinner: null,
-                            isTemp: true
-                        };
-                    }
-                    
-                    if (this.selectedMealType === 'lunch') {
-                        this.dailyMenus[this.selectedDay].meal_lunch = mealData;
-                    } else {
-                        this.dailyMenus[this.selectedDay].meal_dinner = mealData;
-                    }
+                console.log('🍽️ [DEBUG] Asignando comida:', mealId, 'tipo:', this.selectedMealType, 'menú actual:', menu);
+
+                if (menu) {
+                    // Asegurar que siempre pasamos AMBOS campos con valores válidos (null si no hay)
+                    const updateData = this.selectedMealType === 'lunch'
+                        ? { meal_lunch_id: mealId, meal_dinner_id: menu.meal_dinner_id ?? null }
+                        : { meal_lunch_id: menu.meal_lunch_id ?? null, meal_dinner_id: mealId };
+                    console.log('📤 [DEBUG] Enviando update:', updateData);
+                    await this.updateDailyMenu(menu.id, updateData);
                 } else {
-                    if (menu) {
-                        const updateData = this.selectedMealType === 'lunch' ? { meal_lunch_id: mealId, meal_dinner_id: menu.meal_dinner_id ?? null } : { meal_lunch_id: menu.meal_lunch_id ?? null, meal_dinner_id: mealId };
-                        await this.updateDailyMenu(menu.id, updateData);
-                    } else {
-                        const createData = this.selectedMealType === 'lunch' ? { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: mealId, meal_dinner_id: null } : { mes: parseInt(parts[1]), año: parseInt(parts[0]), dia: parseInt(parts[2]), meal_lunch_id: null, meal_dinner_id: mealId };
-                        await this.createDailyMenu(createData);
-                    }
-                    
-                    await this.loadData();
+                    const createData = this.selectedMealType === 'lunch'
+                        ? { mes: parseInt(month), año: parseInt(year), dia: parseInt(day), meal_lunch_id: mealId, meal_dinner_id: null }
+                        : { mes: parseInt(month), año: parseInt(year), dia: parseInt(day), meal_lunch_id: null, meal_dinner_id: mealId };
+                    console.log('📤 [DEBUG] Enviando create:', createData);
+                    await this.createDailyMenu(createData);
                 }
 
                 closeModal('selectMealModal');
+                await this.loadData();
                 this.renderCalendar();
-                this.updateSummary();
             }
 
             async createDailyMenu(data) {
@@ -1393,7 +1284,7 @@
                     if (menu?.meal_dinner) weekTotal += menu.meal_dinner.precio;
                 });
                 
-                document.getElementById('weekTotal').textContent = '€' + weekTotal.toFixed(2);
+                document.getElementById('weekTotal').textContent = `€${weekTotal.toFixed(2)}`;
             }
 
             setupEventListeners() {
@@ -1407,7 +1298,8 @@
                 const name = document.getElementById('mealName').value;
                 const price = parseFloat(document.getElementById('mealPrice').value);
                 
-                const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes input:checked')).map(cb => parseInt(cb.value));
+                const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes input:checked'))
+                    .map(cb => parseInt(cb.value));
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/meals`, {
@@ -1437,7 +1329,8 @@
                 const name = document.getElementById('mealName2').value;
                 const price = parseFloat(document.getElementById('mealPrice2').value);
                 
-                const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes2 input:checked')).map(cb => parseInt(cb.value));
+                const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes2 input:checked'))
+                    .map(cb => parseInt(cb.value));
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/meals`, {
@@ -1490,7 +1383,10 @@
                 this.categories.forEach(cat => {
                     const label = document.createElement('label');
                     label.className = 'checkbox-item';
-                    label.innerHTML = `<input type="checkbox" value="${cat.id}"><span>${cat.nombre}</span>`;
+                    label.innerHTML = `
+                        <input type="checkbox" value="${cat.id}">
+                        <span>${cat.nombre}</span>
+                    `;
                     container.appendChild(label);
                 });
             }
@@ -1501,7 +1397,10 @@
                 this.categories.forEach(cat => {
                     const item = document.createElement('div');
                     item.className = 'item';
-                    item.innerHTML = `<div class="item-name">${cat.nombre}</div><button class="btn-small btn-delete" onclick="app.deleteCategory(${cat.id})">Eliminar</button>`;
+                    item.innerHTML = `
+                        <div class="item-name">${cat.nombre}</div>
+                        <button class="btn-small btn-delete" onclick="app.deleteCategory(${cat.id})">Eliminar</button>
+                    `;
                     container.appendChild(item);
                 });
             }
@@ -1528,7 +1427,7 @@
 
             showMessage(elementId, message, type) {
                 const element = document.getElementById(elementId);
-                element.innerHTML = '<div class="' + type + '">' + message + '</div>';
+                element.innerHTML = `<div class="${type}">${message}</div>`;
                 setTimeout(() => { element.innerHTML = ''; }, 3000);
             }
 
@@ -1538,7 +1437,16 @@
                 this.meals.forEach(meal => {
                     const item = document.createElement('div');
                     item.className = 'item';
-                    item.innerHTML = `<div class="item-info"><div class="item-name">${meal.nombre}</div><div class="item-price">${(meal.precio || 0).toFixed(2)}€</div></div><div class="item-actions"><button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button><button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button></div>`;
+                    item.innerHTML = `
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-price">${(meal.precio || 0).toFixed(2)}€</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button>
+                            <button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button>
+                        </div>
+                    `;
                     container.appendChild(item);
                 });
             }
@@ -1549,7 +1457,10 @@
                 this.categories.forEach(cat => {
                     const label = document.createElement('label');
                     label.className = 'checkbox-item';
-                    label.innerHTML = `<input type="checkbox" value="${cat.id}"><span>${cat.nombre}</span>`;
+                    label.innerHTML = `
+                        <input type="checkbox" value="${cat.id}">
+                        <span>${cat.nombre}</span>
+                    `;
                     container.appendChild(label);
                 });
             }
@@ -1580,31 +1491,55 @@
         }
 
         function openAddMealModal() {
-            if (!window.app) return;
+            console.log('🔍 [DEBUG] openAddMealModal llamado');
+            console.log('🔍 [DEBUG] app existe?', window.app ? 'SÍ' : 'NO');
+            
+            if (!window.app) {
+                console.error('❌ App no está inicializada aún');
+                return;
+            }
+            
             try {
                 window.app.renderCategoriesCheckboxes();
                 document.getElementById('addMealModal').classList.add('active');
+                console.log('✅ Modal de receta abierto');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }
         }
 
         function openManageMealsModal() {
-            if (!window.app) return;
+            console.log('🔍 [DEBUG] openManageMealsModal llamado');
+            console.log('🔍 [DEBUG] app existe?', window.app ? 'SÍ' : 'NO');
+            
+            if (!window.app) {
+                console.error('❌ App no está inicializada aún');
+                return;
+            }
+            
             try {
                 window.app.renderMealsList();
                 window.app.renderCategoriesCheckboxes2();
                 document.getElementById('manageMealsModal').classList.add('active');
+                console.log('✅ Modal de recetas abierto');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }
         }
 
         function openManageCategoriesModal() {
-            if (!window.app) return;
+            console.log('🔍 [DEBUG] openManageCategoriesModal llamado');
+            console.log('🔍 [DEBUG] app existe?', window.app ? 'SÍ' : 'NO');
+            
+            if (!window.app) {
+                console.error('❌ App no está inicializada aún');
+                return;
+            }
+            
             try {
                 window.app.renderCategoriesList();
                 document.getElementById('manageCategoriesModal').classList.add('active');
+                console.log('✅ Modal de categorías abierto');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }
@@ -1620,15 +1555,22 @@
             }
         });
 
+        // Inicializar app
         let app;
-        console.log('%c🚀 HomeAPI - Gestor de Menú Semanal', 'color: #FF69B4; font-size: 14px; font-weight: bold;');
+        console.log('%c🚀 HomeAPI está cargando...', 'color: #FF69B4; font-size: 14px; font-weight: bold;');
         console.log('📍 URL Base de API:', API_BASE_URL);
         
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('%c✅ Inicializando aplicación...', 'color: #5FB35F; font-size: 12px;');
+            console.log('%c✅ DOMContentLoaded disparado', 'color: #5FB35F; font-size: 12px;');
+            console.log('🔨 Creando instancia de MenuApp...');
             app = new MenuApp();
-            window.app = app;
-            console.log('✅ Aplicación lista');
+            window.app = app;  // ✅ IMPORTANTE: Asignar a window.app
+            console.log('🔨 MenuApp asignada a window.app');
+            console.log('✅ window.app está listo:', window.app ? 'SÍ ✅' : 'NO ❌');
+        });
+        
+        window.addEventListener('load', () => {
+            console.log('%c✅ Window load disparado', 'color: #5FB35F; font-size: 12px;');
         });
     </script>
 </body>
