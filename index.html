@@ -504,6 +504,79 @@
             margin-top: 2px;
         }
 
+        .meal-view-toggle {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .meal-view-btn {
+            border: 1px solid var(--border-color);
+            background: white;
+            color: #666;
+            border-radius: 8px;
+            padding: 7px 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .meal-view-btn.active {
+            background: var(--pastel-pink);
+            color: white;
+            border-color: var(--pastel-pink);
+        }
+
+        .favorite-btn {
+            border: 1px solid #f3d37a;
+            background: #fffdf3;
+            color: #b08a00;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .favorite-btn.active {
+            background: #ffe48b;
+            color: #8d6a00;
+        }
+
+        .history-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .history-list {
+            margin-top: 12px;
+            max-height: 130px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .history-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ededed;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item-time {
+            display: block;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 2px;
+        }
+
         .meal-item.empty {
             cursor: pointer;
         }
@@ -771,6 +844,43 @@
 
             .modal-content {
                 max-width: 90%;
+                padding: 18px;
+            }
+
+            .temp-recipe-input-group {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .temp-recipe-input,
+            .temp-recipe-price,
+            .btn-add-temp {
+                width: 100%;
+            }
+
+            #tempRecipesList .item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+
+            #tempRecipesList .item-actions {
+                width: 100%;
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
+            #tempRecipesList .item-actions .btn-small {
+                flex: 1;
+                min-width: 110px;
+            }
+
+            .filter-group {
+                flex-direction: column;
+            }
+
+            .meal-view-toggle {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -802,6 +912,14 @@
                         <p><strong>Dinero/semana:</strong> <span id="weekTotal">€0.00</span></p>
                     </div>
                 </div>
+
+                <div class="history-card">
+                    <h3>↩ Historial</h3>
+                    <button id="undoBtn" class="btn-secondary" onclick="app.undoLastAction()">Deshacer último cambio</button>
+                    <div id="historyList" class="history-list">
+                        <div class="history-item">Sin cambios recientes</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -816,6 +934,11 @@
             
             <!-- Búsqueda y Filtros -->
             <div class="search-filter-section">
+                <div class="meal-view-toggle">
+                    <button type="button" id="viewAllBtn" class="meal-view-btn active" onclick="app.setMealView('all')">📋 Todas</button>
+                    <button type="button" id="viewFavoritesBtn" class="meal-view-btn" onclick="app.setMealView('favorites')">⭐ Favoritas</button>
+                    <button type="button" id="viewRecentBtn" class="meal-view-btn" onclick="app.setMealView('recent')">🕒 Recientes</button>
+                </div>
                 <input type="text" id="mealSearchInput" class="search-input" placeholder="🔍 Buscar receta..." onkeyup="app.filterMeals()">
                 <div class="filter-group">
                     <button type="button" id="openCategoryFilterBtn" class="filter-trigger" onclick="app.toggleCategoryFilterPopup()">📂 Filtrar por categorías</button>
@@ -963,9 +1086,29 @@
                 this.filterText = '';
                 this.selectedCategoryIds = [];
                 this.pendingCategoryIds = [];
+                this.currentMealView = 'all';
+                this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
+                this.recentMealIds = this.loadStoredIds('homeapi_recent_meals');
+                this.historyStack = [];
+                this.maxHistoryEntries = 30;
+                this.isRestoringHistory = false;
                 console.log('📱 MenuApp constructor iniciado');
                 console.log('📱 API URL:', API_BASE_URL);
                 this.init();
+            }
+
+            loadStoredIds(key) {
+                try {
+                    const raw = localStorage.getItem(key);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(parsed) ? parsed.filter(n => Number.isInteger(n)) : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            storeIds(key, ids) {
+                localStorage.setItem(key, JSON.stringify(ids));
             }
 
             async init() {
@@ -974,11 +1117,173 @@
                     await this.loadData();
                     console.log('✅ Datos cargados');
                     this.renderCalendar();
+                    this.updateMealViewButtons();
+                    this.updateHistoryUI();
                     this.setupEventListeners();
                     console.log('🎉 ¡MenuApp inicializado correctamente!');
                 } catch (error) {
                     console.error('❌ Error en init():', error);
                 }
+            }
+
+            cloneStateSnapshot() {
+                return {
+                    dailyMenus: JSON.parse(JSON.stringify(this.dailyMenus)),
+                    tempRecipes: JSON.parse(JSON.stringify(this.tempRecipes))
+                };
+            }
+
+            pushHistory(label) {
+                if (this.isRestoringHistory) return;
+                this.historyStack.push({
+                    label,
+                    timestamp: Date.now(),
+                    snapshot: this.cloneStateSnapshot()
+                });
+                if (this.historyStack.length > this.maxHistoryEntries) {
+                    this.historyStack.shift();
+                }
+                this.updateHistoryUI();
+            }
+
+            updateHistoryUI() {
+                const list = document.getElementById('historyList');
+                const undoBtn = document.getElementById('undoBtn');
+                if (!list || !undoBtn) return;
+
+                undoBtn.disabled = this.historyStack.length === 0;
+                undoBtn.style.opacity = this.historyStack.length === 0 ? '0.6' : '1';
+                undoBtn.style.cursor = this.historyStack.length === 0 ? 'not-allowed' : 'pointer';
+
+                list.innerHTML = '';
+                if (this.historyStack.length === 0) {
+                    list.innerHTML = '<div class="history-item">Sin cambios recientes</div>';
+                    return;
+                }
+
+                const recent = [...this.historyStack].slice(-8).reverse();
+                recent.forEach(entry => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    const time = new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    item.innerHTML = `${entry.label}<span class="history-item-time">${time}</span>`;
+                    list.appendChild(item);
+                });
+            }
+
+            async undoLastAction() {
+                if (this.historyStack.length === 0) return;
+                const entry = this.historyStack.pop();
+                this.updateHistoryUI();
+                await this.restoreSnapshot(entry.snapshot);
+            }
+
+            async restoreSnapshot(snapshot) {
+                this.isRestoringHistory = true;
+                try {
+                    const targetMenus = snapshot.dailyMenus || {};
+                    const currentMenus = this.dailyMenus || {};
+                    const keys = new Set([...Object.keys(targetMenus), ...Object.keys(currentMenus)]);
+
+                    for (const key of keys) {
+                        const current = currentMenus[key];
+                        const target = targetMenus[key];
+
+                        const currentPersistent = current && !current.isTemp;
+                        const targetPersistent = target && !target.isTemp;
+
+                        if (currentPersistent && !targetPersistent) {
+                            await this.deleteDailyMenu(current.id);
+                            continue;
+                        }
+
+                        if (!currentPersistent && targetPersistent) {
+                            await this.createDailyMenu({
+                                mes: target.mes,
+                                año: target.año,
+                                dia: target.dia,
+                                meal_lunch_id: target.meal_lunch_id ?? null,
+                                meal_dinner_id: target.meal_dinner_id ?? null
+                            });
+                            continue;
+                        }
+
+                        if (currentPersistent && targetPersistent) {
+                            const cLunch = current.meal_lunch_id ?? null;
+                            const cDinner = current.meal_dinner_id ?? null;
+                            const tLunch = target.meal_lunch_id ?? null;
+                            const tDinner = target.meal_dinner_id ?? null;
+                            if (cLunch !== tLunch || cDinner !== tDinner) {
+                                await this.updateDailyMenu(current.id, {
+                                    meal_lunch_id: tLunch,
+                                    meal_dinner_id: tDinner
+                                });
+                            }
+                        }
+                    }
+
+                    await this.loadData();
+                    this.tempRecipes = JSON.parse(JSON.stringify(snapshot.tempRecipes || []));
+
+                    Object.entries(targetMenus).forEach(([k, menu]) => {
+                        if (menu && menu.isTemp) {
+                            this.dailyMenus[k] = JSON.parse(JSON.stringify(menu));
+                        }
+                    });
+
+                    this.renderCalendar();
+                    this.updateSummary();
+                } finally {
+                    this.isRestoringHistory = false;
+                }
+            }
+
+            setMealView(mode) {
+                this.currentMealView = mode;
+                this.updateMealViewButtons();
+                this.filterMeals();
+            }
+
+            updateMealViewButtons() {
+                const allBtn = document.getElementById('viewAllBtn');
+                const favBtn = document.getElementById('viewFavoritesBtn');
+                const recentBtn = document.getElementById('viewRecentBtn');
+                if (!allBtn || !favBtn || !recentBtn) return;
+
+                allBtn.classList.toggle('active', this.currentMealView === 'all');
+                favBtn.classList.toggle('active', this.currentMealView === 'favorites');
+                recentBtn.classList.toggle('active', this.currentMealView === 'recent');
+            }
+
+            getMealsForCurrentView() {
+                if (this.currentMealView === 'favorites') {
+                    return this.meals.filter(m => this.favoriteMealIds.includes(m.id));
+                }
+                if (this.currentMealView === 'recent') {
+                    const map = new Map(this.meals.map(m => [m.id, m]));
+                    return this.recentMealIds.map(id => map.get(id)).filter(Boolean);
+                }
+                return [...this.meals];
+            }
+
+            toggleFavorite(mealId, event) {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+                if (this.favoriteMealIds.includes(mealId)) {
+                    this.favoriteMealIds = this.favoriteMealIds.filter(id => id !== mealId);
+                } else {
+                    this.favoriteMealIds.push(mealId);
+                }
+                this.storeIds('homeapi_favorite_meals', this.favoriteMealIds);
+                this.filterMeals();
+            }
+
+            markAsRecent(mealId) {
+                if (!mealId || mealId < 0) return;
+                this.recentMealIds = [mealId, ...this.recentMealIds.filter(id => id !== mealId)].slice(0, 20);
+                this.storeIds('homeapi_recent_meals', this.recentMealIds);
             }
 
             async loadData() {
@@ -1120,6 +1425,7 @@
             async removeMeal(dateKey, type) {
                 const menu = this.dailyMenus[dateKey];
                 if (!menu) return;
+                this.pushHistory('Quitar receta');
 
                 const mealId = type === 'lunch' ? menu.meal_lunch_id : menu.meal_dinner_id;
                 const otherMealId = type === 'lunch' ? menu.meal_dinner_id : menu.meal_lunch_id;
@@ -1169,7 +1475,9 @@
                 const grouped = {};
                 const noCategoryMeals = [];
                 
-                this.meals.forEach(meal => {
+                const baseMeals = this.getMealsForCurrentView();
+
+                baseMeals.forEach(meal => {
                     if (this.filterText && !meal.nombre.toLowerCase().includes(this.filterText)) return;
                     
                     if (this.selectedCategoryIds.length > 0) {
@@ -1196,7 +1504,8 @@
                     grouped[categoryName].forEach(meal => {
                         const item = document.createElement('div');
                         item.className = 'item';
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div>';
+                        const isFav = this.favoriteMealIds.includes(meal.id);
+                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
                         list.appendChild(item);
                         hasItems = true;
                     });
@@ -1211,7 +1520,8 @@
                     noCategoryMeals.forEach(meal => {
                         const item = document.createElement('div');
                         item.className = 'item';
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div>';
+                        const isFav = this.favoriteMealIds.includes(meal.id);
+                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
                         list.appendChild(item);
                         hasItems = true;
                     });
@@ -1299,6 +1609,7 @@
                     alert('Por favor ingresa nombre y precio válidos');
                     return;
                 }
+                this.pushHistory('Agregar receta temporal');
                 
                 this.tempRecipes.push({
                     nombre: name,
@@ -1312,6 +1623,7 @@
             }
 
             deleteTempRecipe(index) {
+                this.pushHistory('Eliminar receta temporal');
                 this.tempRecipes.splice(index, 1);
                 this.renderTempRecipes();
             }
@@ -1389,6 +1701,7 @@
             }
 
             async swapOrMoveMeal(sourceDate, sourceType, targetDate, targetType) {
+                this.pushHistory('Mover/intercambiar receta');
                 const sourceMenu = this.dailyMenus[sourceDate];
                 const targetMenu = this.dailyMenus[targetDate];
                 
@@ -1466,6 +1779,7 @@
             }
 
             async assignMealToDay(mealId, isTemp = false, tempRecipe = null) {
+                this.pushHistory(isTemp ? 'Asignar receta temporal' : 'Asignar receta');
                 const parts = this.selectedDay.split('-');
                 const menu = this.dailyMenus[this.selectedDay];
                 
@@ -1481,6 +1795,7 @@
                     return;
                 } else {
                     mealData = this.meals.find(m => m.id === mealId);
+                    if (mealData) this.markAsRecent(mealData.id);
                 }
 
                 if (!mealData) return;
