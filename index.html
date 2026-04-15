@@ -40,6 +40,7 @@
                     <div id="historyList" class="history-list">
                         <div class="history-item">Sin cambios recientes</div>
                     </div>
+                    <button id="historyToggleBtn" class="history-toggle-btn" onclick="app.toggleHistoryExpanded()" style="display: none;">Ver más</button>
                 </div>
             </div>
         </div>
@@ -63,7 +64,7 @@
                 <input type="text" id="mealSearchInput" class="search-input" placeholder="🔍 Buscar receta..." onkeyup="app.filterMeals()">
                 <div class="filter-group">
                     <button type="button" id="openCategoryFilterBtn" class="filter-trigger" onclick="app.toggleCategoryFilterPopup()">📂 Filtrar por categorías</button>
-                    <button class="clear-filters" onclick="app.clearFilters()">Limpiar filtros</button>
+                    <button type="button" class="clear-filters" onclick="app.clearFilters()" title="Limpiar filtros">✕</button>
                 </div>
                 <div id="categoryFilterSummary" class="filter-selected-count">Sin categorías seleccionadas</div>
                 <div id="categoryFilterPopup" class="filter-popup">

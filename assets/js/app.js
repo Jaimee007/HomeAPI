@@ -31,7 +31,8 @@ const getApiBaseUrl = () => {
                 this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
                 this.recentMealIds = this.loadStoredIds('homeapi_recent_meals');
                 this.historyStack = [];
-                this.maxHistoryEntries = 30;
+                this.maxHistoryEntries = 5;
+                this.historyExpanded = false;
                 this.isRestoringHistory = false;
                 console.log('📱 MenuApp constructor iniciado');
                 console.log('📱 API URL:', API_BASE_URL);
@@ -90,7 +91,8 @@ const getApiBaseUrl = () => {
             updateHistoryUI() {
                 const list = document.getElementById('historyList');
                 const undoBtn = document.getElementById('undoBtn');
-                if (!list || !undoBtn) return;
+                const historyToggleBtn = document.getElementById('historyToggleBtn');
+                if (!list || !undoBtn || !historyToggleBtn) return;
 
                 undoBtn.disabled = this.historyStack.length === 0;
                 undoBtn.style.opacity = this.historyStack.length === 0 ? '0.6' : '1';
@@ -99,10 +101,12 @@ const getApiBaseUrl = () => {
                 list.innerHTML = '';
                 if (this.historyStack.length === 0) {
                     list.innerHTML = '<div class="history-item">Sin cambios recientes</div>';
+                    historyToggleBtn.style.display = 'none';
                     return;
                 }
 
-                const recent = [...this.historyStack].slice(-8).reverse();
+                const visibleCount = this.historyExpanded ? this.historyStack.length : 3;
+                const recent = [...this.historyStack].slice(-visibleCount).reverse();
                 recent.forEach(entry => {
                     const item = document.createElement('div');
                     item.className = 'history-item';
@@ -110,6 +114,18 @@ const getApiBaseUrl = () => {
                     item.innerHTML = `${entry.label}<span class="history-item-time">${time}</span>`;
                     list.appendChild(item);
                 });
+
+                if (this.historyStack.length > 3) {
+                    historyToggleBtn.style.display = 'block';
+                    historyToggleBtn.textContent = this.historyExpanded ? 'Ver menos' : 'Ver más';
+                } else {
+                    historyToggleBtn.style.display = 'none';
+                }
+            }
+
+            toggleHistoryExpanded() {
+                this.historyExpanded = !this.historyExpanded;
+                this.updateHistoryUI();
             }
 
             async undoLastAction() {
@@ -167,8 +183,27 @@ const getApiBaseUrl = () => {
                     this.tempRecipes = JSON.parse(JSON.stringify(snapshot.tempRecipes || []));
 
                     Object.entries(targetMenus).forEach(([k, menu]) => {
-                        if (menu && menu.isTemp) {
+                        if (!menu) return;
+
+                        if (menu.isTemp) {
                             this.dailyMenus[k] = JSON.parse(JSON.stringify(menu));
+                            return;
+                        }
+
+                        const hasTempMeal = menu.meal_lunch?.isTemp || menu.meal_dinner?.isTemp;
+                        if (hasTempMeal) {
+                            if (!this.dailyMenus[k]) {
+                                this.dailyMenus[k] = JSON.parse(JSON.stringify(menu));
+                            } else {
+                                if (menu.meal_lunch?.isTemp) {
+                                    this.dailyMenus[k].meal_lunch = JSON.parse(JSON.stringify(menu.meal_lunch));
+                                    this.dailyMenus[k].meal_lunch_id = null;
+                                }
+                                if (menu.meal_dinner?.isTemp) {
+                                    this.dailyMenus[k].meal_dinner = JSON.parse(JSON.stringify(menu.meal_dinner));
+                                    this.dailyMenus[k].meal_dinner_id = null;
+                                }
+                            }
                         }
                     });
 
@@ -303,7 +338,10 @@ const getApiBaseUrl = () => {
                 html += `<div class="meal-slot">
                     <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
                         ${lunch ? `
-                            <div class="meal-info"><span class="meal-name">${lunch.nombre}</span></div>
+                            <div class="meal-info">
+                                <span class="meal-name">${lunch.nombre}</span>
+                                ${lunch.isTemp ? '<div class="meal-inline-meta"><span class="meal-card-temp-badge">TEMP</span></div>' : ''}
+                            </div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'lunch')">✕</button>
                         ` : '<span style="color: #ccc;">+ Almuerzo</span>'}
                     </div>
@@ -313,7 +351,10 @@ const getApiBaseUrl = () => {
                 html += `<div class="meal-slot">
                     <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
                         ${dinner ? `
-                            <div class="meal-info"><span class="meal-name">${dinner.nombre}</span></div>
+                            <div class="meal-info">
+                                <span class="meal-name">${dinner.nombre}</span>
+                                ${dinner.isTemp ? '<div class="meal-inline-meta"><span class="meal-card-temp-badge">TEMP</span></div>' : ''}
+                            </div>
                             <button class="btn-remove-meal" onclick="event.stopPropagation(); app.removeMeal('${key}', 'dinner')">✕</button>
                         ` : '<span style="color: #ccc;">+ Cena</span>'}
                     </div>
