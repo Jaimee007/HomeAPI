@@ -396,12 +396,6 @@ const getApiBaseUrl = () => {
                 document.getElementById('categoryFilterPopup').classList.remove('active');
                 this.updateCategoryFilterSummary();
                 
-                const tempSection = document.getElementById('tempRecipesSection');
-                tempSection.style.display = 'block';
-                if (this.tempRecipes.length > 0) {
-                    this.renderTempRecipes();
-                }
-                
                 this.filterMeals();
                 modal.classList.add('active');
             }
@@ -411,6 +405,8 @@ const getApiBaseUrl = () => {
                 
                 const list = document.getElementById('mealsSelectList');
                 const noResults = document.getElementById('noResultsMessage');
+                const noResultsText = document.getElementById('noResultsText');
+                const addTempBtn = document.getElementById('addTempFromSearchBtn');
                 list.innerHTML = '';
                 
                 const grouped = {};
@@ -469,6 +465,24 @@ const getApiBaseUrl = () => {
                 }
                 
                 noResults.style.display = hasItems ? 'none' : 'block';
+                if (!hasItems) {
+                    const trimmedSearch = this.getCurrentSearchText();
+                    const canCreateTemp = trimmedSearch.length > 0;
+                    noResultsText.textContent = canCreateTemp
+                        ? `No existe "${trimmedSearch}"`
+                        : '❌ No se encontraron recetas';
+                    addTempBtn.style.display = canCreateTemp ? 'inline-flex' : 'none';
+                }
+            }
+
+            getCurrentSearchText() {
+                return (document.getElementById('mealSearchInput')?.value || '').trim();
+            }
+
+            assignSearchAsTempRecipe() {
+                const name = this.getCurrentSearchText();
+                if (!name) return;
+                this.assignMealToDay(-1, true, { nombre: name, precio: 0, isTemp: true });
             }
 
             clearFilters() {
@@ -528,50 +542,6 @@ const getApiBaseUrl = () => {
                     .filter(c => this.selectedCategoryIds.includes(c.id))
                     .map(c => c.nombre);
                 summary.textContent = `Filtrando por: ${names.join(', ')}`;
-            }
-
-            renderTempRecipes() {
-                const container = document.getElementById('tempRecipesList');
-                container.innerHTML = '';
-                
-                this.tempRecipes.forEach((recipe, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'item';
-                    item.innerHTML = '<div class="item-info"><div class="item-name temp-recipe">' + recipe.nombre + ' <span class="temp-badge">TEMP</span></div><div class="item-price">' + recipe.precio.toFixed(2) + '€</div></div><div class="item-actions"><button class="btn-small btn-edit" onclick="app.assignTempRecipe(' + index + ')">Asignar</button><button class="btn-small btn-delete" onclick="app.deleteTempRecipe(' + index + ')">Eliminar</button></div>';
-                    container.appendChild(item);
-                });
-            }
-
-            addTempRecipe() {
-                const name = document.getElementById('tempRecipeName').value.trim();
-                const price = parseFloat(document.getElementById('tempRecipePrice').value);
-                
-                if (!name || isNaN(price) || price < 0) {
-                    alert('Por favor ingresa nombre y precio válidos');
-                    return;
-                }
-                this.pushHistory('Agregar receta temporal');
-                
-                this.tempRecipes.push({
-                    nombre: name,
-                    precio: price,
-                    isTemp: true
-                });
-                
-                document.getElementById('tempRecipeName').value = '';
-                document.getElementById('tempRecipePrice').value = '';
-                this.renderTempRecipes();
-            }
-
-            deleteTempRecipe(index) {
-                this.pushHistory('Eliminar receta temporal');
-                this.tempRecipes.splice(index, 1);
-                this.renderTempRecipes();
-            }
-
-            assignTempRecipe(index) {
-                const recipe = this.tempRecipes[index];
-                this.assignMealToDay(-1, true, recipe);
             }
 
             handleDragStart(e) {

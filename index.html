@@ -56,9 +56,9 @@
             <!-- Búsqueda y Filtros -->
             <div class="search-filter-section">
                 <div class="meal-view-toggle">
-                    <button type="button" id="viewAllBtn" class="meal-view-btn active" onclick="app.setMealView('all')">📋 Todas</button>
-                    <button type="button" id="viewFavoritesBtn" class="meal-view-btn" onclick="app.setMealView('favorites')">⭐ Favoritas</button>
-                    <button type="button" id="viewRecentBtn" class="meal-view-btn" onclick="app.setMealView('recent')">🕒 Recientes</button>
+                    <button type="button" id="viewAllBtn" class="meal-view-btn active" onclick="app.setMealView('all')" title="Todas">📋</button>
+                    <button type="button" id="viewFavoritesBtn" class="meal-view-btn" onclick="app.setMealView('favorites')" title="Favoritas">⭐</button>
+                    <button type="button" id="viewRecentBtn" class="meal-view-btn" onclick="app.setMealView('recent')" title="Recientes">🕒</button>
                 </div>
                 <input type="text" id="mealSearchInput" class="search-input" placeholder="🔍 Buscar receta..." onkeyup="app.filterMeals()">
                 <div class="filter-group">
@@ -75,21 +75,13 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Recetas Temporales -->
-            <div class="temp-recipes-section" id="tempRecipesSection" style="display: none;">
-                <h4>📝 Recetas Temporales (No Guardadas)</h4>
-                <div class="temp-recipe-input-group">
-                    <input type="text" id="tempRecipeName" class="temp-recipe-input" placeholder="Nombre de receta..." maxlength="50">
-                    <input type="number" id="tempRecipePrice" class="temp-recipe-price" placeholder="€" step="0.01" min="0">
-                    <button class="btn-add-temp" onclick="app.addTempRecipe()">Agregar</button>
-                </div>
-                <div id="tempRecipesList"></div>
-            </div>
             
             <!-- Lista de Recetas -->
             <div id="mealsSelectList" class="items-list items-list-grouped"></div>
-            <div id="noResultsMessage" class="no-results" style="display: none;">❌ No se encontraron recetas</div>
+            <div id="noResultsMessage" class="no-results" style="display: none;">
+                <div id="noResultsText">❌ No se encontraron recetas</div>
+                <button type="button" id="addTempFromSearchBtn" class="btn-add-temp-from-search" onclick="app.assignSearchAsTempRecipe()" style="display: none;">Añadir receta temporal</button>
+            </div>
             
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeModal('selectMealModal')">Cancelar</button>

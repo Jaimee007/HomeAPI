@@ -509,10 +509,12 @@
             background: white;
             color: #666;
             border-radius: 8px;
-            padding: 7px 6px;
-            font-size: 0.75rem;
+            padding: 8px 6px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
+            min-width: 44px;
+            line-height: 1;
         }
 
         .meal-view-btn.active {
@@ -534,6 +536,22 @@
         .favorite-btn.active {
             background: #ffe48b;
             color: #8d6a00;
+        }
+
+        .btn-add-temp-from-search {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: var(--pastel-purple);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .btn-add-temp-from-search:hover {
+            background: #C994FF;
         }
 
         .history-card {
@@ -600,59 +618,6 @@
 
         .clear-filters:hover {
             background: #FFD700;
-        }
-
-        .temp-recipes-section {
-            background: rgba(217, 179, 255, 0.2);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border: 1px solid var(--pastel-purple);
-        }
-
-        .temp-recipes-section h4 {
-            font-size: 0.85rem;
-            color: #555;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .temp-recipe-input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .temp-recipe-input {
-            flex: 1;
-            padding: 8px 10px;
-            border: 1px solid var(--pastel-purple);
-            border-radius: 6px;
-            font-size: 0.85rem;
-        }
-
-        .temp-recipe-price {
-            width: 80px;
-            padding: 8px 10px;
-            border: 1px solid var(--pastel-purple);
-            border-radius: 6px;
-            font-size: 0.85rem;
-        }
-
-        .btn-add-temp {
-            padding: 8px 12px;
-            background: var(--pastel-purple);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-
-        .btn-add-temp:hover {
-            background: #C994FF;
         }
 
         .meal-group-header {
@@ -838,34 +803,6 @@
             .modal-content {
                 max-width: 90%;
                 padding: 18px;
-            }
-
-            .temp-recipe-input-group {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .temp-recipe-input,
-            .temp-recipe-price,
-            .btn-add-temp {
-                width: 100%;
-            }
-
-            #tempRecipesList .item {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-            }
-
-            #tempRecipesList .item-actions {
-                width: 100%;
-                justify-content: flex-end;
-                flex-wrap: wrap;
-            }
-
-            #tempRecipesList .item-actions .btn-small {
-                flex: 1;
-                min-width: 110px;
             }
 
             .filter-group {
