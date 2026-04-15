@@ -449,11 +449,9 @@ const getApiBaseUrl = () => {
                 const noResultsText = document.getElementById('noResultsText');
                 const addTempBtn = document.getElementById('addTempFromSearchBtn');
                 list.innerHTML = '';
-                
-                const grouped = {};
-                const noCategoryMeals = [];
-                
+
                 const baseMeals = this.getMealsForCurrentView();
+                const filteredMeals = [];
 
                 baseMeals.forEach(meal => {
                     if (this.filterText && !meal.nombre.toLowerCase().includes(this.filterText)) return;
@@ -462,48 +460,21 @@ const getApiBaseUrl = () => {
                         const hasCategory = meal.categories && meal.categories.some(c => this.selectedCategoryIds.includes(c.id));
                         if (!hasCategory) return;
                     }
-                    
-                    if (meal.categories && meal.categories.length > 0) {
-                        const categoryName = meal.categories[0].nombre;
-                        if (!grouped[categoryName]) grouped[categoryName] = [];
-                        grouped[categoryName].push(meal);
-                    } else {
-                        noCategoryMeals.push(meal);
-                    }
+
+                    filteredMeals.push(meal);
                 });
-                
+
+                filteredMeals.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
                 let hasItems = false;
-                Object.keys(grouped).sort().forEach(categoryName => {
-                    const header = document.createElement('div');
-                    header.className = 'meal-group-header';
-                    header.innerHTML = categoryName + ' <span class="meal-count">' + grouped[categoryName].length + '</span>';
-                    list.appendChild(header);
-                    
-                    grouped[categoryName].forEach(meal => {
-                        const item = document.createElement('div');
-                        item.className = 'item';
-                        const isFav = this.favoriteMealIds.includes(meal.id);
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
-                        list.appendChild(item);
-                        hasItems = true;
-                    });
+                filteredMeals.forEach(meal => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    const isFav = this.favoriteMealIds.includes(meal.id);
+                    item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
+                    list.appendChild(item);
+                    hasItems = true;
                 });
-                
-                if (noCategoryMeals.length > 0) {
-                    const header = document.createElement('div');
-                    header.className = 'meal-group-header';
-                    header.innerHTML = 'Sin categoría <span class="meal-count">' + noCategoryMeals.length + '</span>';
-                    list.appendChild(header);
-                    
-                    noCategoryMeals.forEach(meal => {
-                        const item = document.createElement('div');
-                        item.className = 'item';
-                        const isFav = this.favoriteMealIds.includes(meal.id);
-                        item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
-                        list.appendChild(item);
-                        hasItems = true;
-                    });
-                }
                 
                 noResults.style.display = hasItems ? 'none' : 'block';
                 if (!hasItems) {
