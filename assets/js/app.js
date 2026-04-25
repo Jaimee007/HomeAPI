@@ -383,12 +383,14 @@ const getApiBaseUrl = () => {
 
             getWeek(date) {
                 const current = new Date(date);
-                const first = current.getDate() - ((current.getDay() + 6) % 7);
+                const dayOfWeek = current.getDay();
+                // Calcular cuántos días atrás está el lunes (1 = lunes, 0 = domingo)
+                const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                
                 const week = [];
-                for (let i = 0; i < 7; i++) {
-                    // Usar constructor new Date(año, mes, día) para evitar problemas con setDate()
-                    // Esto permite que JavaScript maneje automáticamente cambios de mes/año
-                    const day = new Date(current.getFullYear(), current.getMonth(), first + i);
+                for (let i = -daysToMonday; i < 7 - daysToMonday; i++) {
+                    const day = new Date(current);
+                    day.setDate(day.getDate() + i);
                     week.push(day);
                 }
                 return week;
