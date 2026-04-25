@@ -386,8 +386,10 @@ const getApiBaseUrl = () => {
                 const first = current.getDate() - ((current.getDay() + 6) % 7);
                 const week = [];
                 for (let i = 0; i < 7; i++) {
-                    const day = new Date(current.setDate(first + i));
-                    week.push(new Date(day));
+                    // Usar constructor new Date(año, mes, día) para evitar problemas con setDate()
+                    // Esto permite que JavaScript maneje automáticamente cambios de mes/año
+                    const day = new Date(current.getFullYear(), current.getMonth(), first + i);
+                    week.push(day);
                 }
                 return week;
             }
