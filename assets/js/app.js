@@ -18,6 +18,7 @@ const getApiBaseUrl = () => {
             constructor() {
                 this.meals = [];
                 this.categories = [];
+                this.ingredients = [];
                 this.dailyMenus = {};
                 this.tempRecipes = [];
                 this.currentDate = new Date();
@@ -28,6 +29,7 @@ const getApiBaseUrl = () => {
                 this.selectedCategoryIds = [];
                 this.pendingCategoryIds = [];
                 this.currentMealView = 'all';
+                this.selectedMealsForBring = [];
                 this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
                 this.recentMealIds = this.loadStoredIds('homeapi_recent_meals');
                 this.historyStack = [];
@@ -266,10 +268,12 @@ const getApiBaseUrl = () => {
                 try {
                     const mealsRes = await fetch(`${API_BASE_URL}/meals`, { headers: { 'X-API-Key': API_KEY } });
                     const categoriesRes = await fetch(`${API_BASE_URL}/categories`, { headers: { 'X-API-Key': API_KEY } });
+                    const ingredientsRes = await fetch(`${API_BASE_URL}/ingredients`, { headers: { 'X-API-Key': API_KEY } });
                     const menusRes = await fetch(`${API_BASE_URL}/daily-menu`, { headers: { 'X-API-Key': API_KEY } });
 
                     this.meals = await mealsRes.json();
                     this.categories = await categoriesRes.json();
+                    this.ingredients = await ingredientsRes.json();
                     
                     let menus = [];
                     if (menusRes.ok) {
@@ -474,8 +478,7 @@ const getApiBaseUrl = () => {
                 filteredMeals.forEach(meal => {
                     const item = document.createElement('div');
                     item.className = 'item';
-                    const isFav = this.favoriteMealIds.includes(meal.id);
-                    item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
+                    item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div></div>';
                     list.appendChild(item);
                     hasItems = true;
                 });
@@ -483,11 +486,12 @@ const getApiBaseUrl = () => {
                 noResults.style.display = hasItems ? 'none' : 'block';
                 if (!hasItems) {
                     const trimmedSearch = this.getCurrentSearchText();
-                    const canCreateTemp = trimmedSearch.length > 0;
-                    noResultsText.textContent = canCreateTemp
+                    noResultsText.textContent = trimmedSearch.length > 0
                         ? `No existe "${trimmedSearch}"`
                         : '❌ No se encontraron recetas';
-                    addTempBtn.style.display = canCreateTemp ? 'inline-flex' : 'none';
+                    if (addTempBtn) {
+                        addTempBtn.style.display = 'none';
+                    }
                 }
             }
 
@@ -498,7 +502,7 @@ const getApiBaseUrl = () => {
             assignSearchAsTempRecipe() {
                 const name = this.getCurrentSearchText();
                 if (!name) return;
-                this.assignMealToDay(-1, true, { nombre: name, precio: 0, isTemp: true });
+                this.assignMealToDay(-1, true, { nombre: name, isTemp: true });
             }
 
             clearFilters() {
@@ -715,7 +719,6 @@ const getApiBaseUrl = () => {
                     mealData = {
                         id: 'temp_' + Date.now(),
                         nombre: tempRecipe.nombre,
-                        precio: tempRecipe.precio,
                         isTemp: true
                     };
                 } else if (mealId === -1) {
@@ -805,36 +808,37 @@ const getApiBaseUrl = () => {
                 document.getElementById('totalMeals').textContent = this.meals.length;
                 document.getElementById('totalCategories').textContent = this.categories.length;
                 
-                let weekTotal = 0;
-                const weeks = this.getWeeks();
-                weeks[0].forEach(date => {
-                    const key = this.getDateKey(date);
-                    const menu = this.dailyMenus[key];
-                    if (menu?.meal_lunch) weekTotal += menu.meal_lunch.precio;
-                    if (menu?.meal_dinner) weekTotal += menu.meal_dinner.precio;
-                });
-                
-                document.getElementById('weekTotal').textContent = '€' + weekTotal.toFixed(2);
+                // Actualiza los contadores del resumen
+                document.getElementById('totalMeals').textContent = this.meals.length;
+                document.getElementById('totalCategories').textContent = this.categories.length;
             }
 
             setupEventListeners() {
                 document.getElementById('addMealForm').addEventListener('submit', (e) => this.handleAddMeal(e));
                 document.getElementById('addMealForm2').addEventListener('submit', (e) => this.handleAddMeal2(e));
                 document.getElementById('addCategoryForm').addEventListener('submit', (e) => this.handleAddCategory(e));
+                document.getElementById('addIngredientForm').addEventListener('submit', (e) => this.handleAddIngredient(e));
             }
 
             async handleAddMeal(e) {
                 e.preventDefault();
                 const name = document.getElementById('mealName').value;
-                const price = parseFloat(document.getElementById('mealPrice').value);
-                
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes input:checked')).map(cb => parseInt(cb.value));
+                const ingredientEntries = Array.from(document.querySelectorAll('#ingredientsCheckboxes .ingredient-row')).map(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const specInput = row.querySelector('input[type="text"]');
+                    return {
+                        ingredient_id: parseInt(checkbox.value),
+                        spec: checkbox.checked ? specInput.value.trim() : null,
+                        selected: checkbox.checked
+                    };
+                }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/meals`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, precio: price, category_ids: categoryIds })
+                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredient_entries })
                     });
 
                     if (response.ok) {
@@ -856,15 +860,22 @@ const getApiBaseUrl = () => {
             async handleAddMeal2(e) {
                 e.preventDefault();
                 const name = document.getElementById('mealName2').value;
-                const price = parseFloat(document.getElementById('mealPrice2').value);
-                
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes2 input:checked')).map(cb => parseInt(cb.value));
+                const ingredientEntries = Array.from(document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row')).map(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const specInput = row.querySelector('input[type="text"]');
+                    return {
+                        ingredient_id: parseInt(checkbox.value),
+                        spec: checkbox.checked ? specInput.value.trim() : null,
+                        selected: checkbox.checked
+                    };
+                }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/meals`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, precio: price, category_ids: categoryIds })
+                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredient_entries })
                     });
 
                     if (response.ok) {
@@ -872,6 +883,7 @@ const getApiBaseUrl = () => {
                         await this.loadData();
                         this.renderMealsList();
                         this.renderCategoriesCheckboxes2();
+                        this.renderIngredientsCheckboxes2();
                     } else {
                         alert('Error al crear la receta');
                     }
@@ -957,9 +969,23 @@ const getApiBaseUrl = () => {
                 const container = document.getElementById('mealsList');
                 container.innerHTML = '';
                 this.meals.forEach(meal => {
+                    const selected = this.selectedMealsForBring.includes(meal.id);
                     const item = document.createElement('div');
                     item.className = 'item';
-                    item.innerHTML = `<div class="item-info"><div class="item-name">${meal.nombre}</div><div class="item-price">${(meal.precio || 0).toFixed(2)}€</div></div><div class="item-actions"><button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button><button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button></div>`;
+                    item.innerHTML = `
+                        <div class="item-select">
+                            <input type="checkbox" id="select-meal-${meal.id}" ${selected ? 'checked' : ''} onchange="app.toggleMealSelectionForBring(${meal.id})">
+                            <label for="select-meal-${meal.id}">Seleccionar</label>
+                        </div>
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-meta">${meal.ingredients?.length || 0} ingrediente(s)</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button>
+                            <button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button>
+                        </div>
+                    `;
                     container.appendChild(item);
                 });
             }
@@ -973,6 +999,126 @@ const getApiBaseUrl = () => {
                     label.innerHTML = `<input type="checkbox" value="${cat.id}"><span>${cat.nombre}</span>`;
                     container.appendChild(label);
                 });
+            }
+
+            renderIngredientsCheckboxes() {
+                const container = document.getElementById('ingredientsCheckboxes');
+                if (!container) return;
+                container.innerHTML = '';
+                if (this.ingredients.length === 0) {
+                    container.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
+                    return;
+                }
+                this.ingredients.forEach(ing => {
+                    const row = document.createElement('div');
+                    row.className = 'ingredient-row';
+                    row.innerHTML = `<label class="checkbox-item"><input type="checkbox" value="${ing.id}"><span>${ing.nombre}</span></label><input type="text" class="ingredient-spec" placeholder="Cantidad / especificación" data-ing-id="${ing.id}">`;
+                    container.appendChild(row);
+                });
+            }
+
+            renderIngredientsCheckboxes2() {
+                const container = document.getElementById('ingredientsCheckboxes2');
+                if (!container) return;
+                container.innerHTML = '';
+                if (this.ingredients.length === 0) {
+                    container.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
+                    return;
+                }
+                this.ingredients.forEach(ing => {
+                    const row = document.createElement('div');
+                    row.className = 'ingredient-row';
+                    row.innerHTML = `<label class="checkbox-item"><input type="checkbox" value="${ing.id}"><span>${ing.nombre}</span></label><input type="text" class="ingredient-spec" placeholder="Cantidad / especificación" data-ing-id="${ing.id}">`;
+                    container.appendChild(row);
+                });
+            }
+
+            renderIngredientsList() {
+                const container = document.getElementById('ingredientsList');
+                if (!container) return;
+                container.innerHTML = '';
+                this.ingredients.forEach(ing => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerHTML = `<div class="item-info"><div class="item-name">${ing.nombre}</div></div><div class="item-actions"><button class="btn-small btn-delete" onclick="app.deleteIngredient(${ing.id})">Eliminar</button></div>`;
+                    container.appendChild(item);
+                });
+            }
+
+            async handleAddIngredient(e) {
+                e.preventDefault();
+                const name = document.getElementById('ingredientName').value;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/ingredients`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre: name })
+                    });
+                    if (response.ok) {
+                        document.getElementById('ingredientName').value = '';
+                        await this.loadData();
+                        this.renderIngredientsList();
+                        this.renderIngredientsCheckboxes();
+                        this.renderIngredientsCheckboxes2();
+                    } else {
+                        const error = await response.json();
+                        this.showMessage('ingredientMessage', error.detail || 'Error al crear ingrediente', 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('ingredientMessage', 'Error: ' + error.message, 'error');
+                }
+            }
+
+            async deleteIngredient(id) {
+                if (!confirm('¿Eliminar este ingrediente?')) return;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/ingredients/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-API-Key': API_KEY }
+                    });
+                    if (response.ok) {
+                        await this.loadData();
+                        this.renderIngredientsList();
+                        this.renderIngredientsCheckboxes();
+                        this.renderIngredientsCheckboxes2();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+
+            toggleMealSelectionForBring(mealId) {
+                if (this.selectedMealsForBring.includes(mealId)) {
+                    this.selectedMealsForBring = this.selectedMealsForBring.filter(id => id !== mealId);
+                } else {
+                    this.selectedMealsForBring.push(mealId);
+                }
+                this.renderMealsList();
+            }
+
+            async addSelectedRecipeIngredientsToBring() {
+                if (this.selectedMealsForBring.length === 0) {
+                    alert('Selecciona al menos una receta.');
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bring/add-recipe-ingredients`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ meal_ids: this.selectedMealsForBring })
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(`Ingredientes añadidos: ${result.added.length}`);
+                        this.selectedMealsForBring = [];
+                        this.renderMealsList();
+                    } else {
+                        alert('Error al añadir ingredientes: ' + (result.detail || JSON.stringify(result)));
+                    }
+                } catch (error) {
+                    console.error('Error añadiendo ingredientes a Bring:', error);
+                    alert('Error añadiendo ingredientes a Bring: ' + error.message);
+                }
             }
 
             async deleteMeal(id) {
@@ -1004,6 +1150,7 @@ const getApiBaseUrl = () => {
             if (!window.app) return;
             try {
                 window.app.renderCategoriesCheckboxes();
+                window.app.renderIngredientsCheckboxes();
                 document.getElementById('addMealModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
@@ -1015,6 +1162,7 @@ const getApiBaseUrl = () => {
             try {
                 window.app.renderMealsList();
                 window.app.renderCategoriesCheckboxes2();
+                window.app.renderIngredientsCheckboxes2();
                 document.getElementById('manageMealsModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
@@ -1026,6 +1174,16 @@ const getApiBaseUrl = () => {
             try {
                 window.app.renderCategoriesList();
                 document.getElementById('manageCategoriesModal').classList.add('active');
+            } catch (error) {
+                console.error('❌ Error abriendo modal:', error);
+            }
+        }
+
+        function openManageIngredientsModal() {
+            if (!window.app) return;
+            try {
+                window.app.renderIngredientsList();
+                document.getElementById('manageIngredientsModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }

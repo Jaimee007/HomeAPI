@@ -13,24 +13,45 @@ class CategoryOut(BaseModel):
     nombre: str
 
 
+# ==================== INGREDIENTES ====================
+class IngredientIn(BaseModel):
+    nombre: str = Field(..., min_length=1)
+
+
+class IngredientOut(BaseModel):
+    id: int
+    nombre: str
+
+
+class MealIngredientIn(BaseModel):
+    ingredient_id: int
+    spec: Optional[str] = None
+
+
+class MealIngredientOut(BaseModel):
+    ingredient_id: int
+    nombre: str
+    spec: Optional[str] = None
+
+
 # ==================== COMIDAS ====================
 class MealIn(BaseModel):
     nombre: str = Field(..., min_length=1)
-    precio: float = Field(..., gt=0)
     category_ids: List[int] = Field(default_factory=list)
+    ingredient_entries: List[MealIngredientIn] = Field(default_factory=list)
 
 
 class MealOut(BaseModel):
     id: int
     nombre: str
-    precio: float
     categories: List[CategoryOut]
+    ingredients: List[MealIngredientOut]
 
 
 class MealUpdate(BaseModel):
     nombre: Optional[str] = None
-    precio: Optional[float] = None
     category_ids: Optional[List[int]] = None
+    ingredient_entries: Optional[List[MealIngredientIn]] = None
 
 
 # ==================== MENÚ DIARIO ====================

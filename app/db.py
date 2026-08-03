@@ -23,6 +23,15 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Tabla de ingredientes
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS ingredients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
     # Tabla de comidas
     cur.execute('''
@@ -30,7 +39,6 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             descripcion TEXT,
-            precio REAL NOT NULL DEFAULT 0.0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -45,6 +53,19 @@ def init_database():
             FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
             UNIQUE(meal_id, category_id)
+        )
+    ''')
+
+    # Tabla de relación entre comidas e ingredientes
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS meal_ingredients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            meal_id INTEGER NOT NULL,
+            ingredient_id INTEGER NOT NULL,
+            spec TEXT,
+            FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
+            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+            UNIQUE(meal_id, ingredient_id)
         )
     ''')
     

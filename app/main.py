@@ -5,7 +5,7 @@ from starlette.requests import Request
 import os
 
 from .db import init_database
-from .routers import categories, meals, daily_menu
+from .routers import categories, meals, daily_menu, ingredients, bring
 
 # Inicializar base de datos
 init_database()
@@ -54,6 +54,8 @@ app.add_middleware(
 # Registrar routers
 app.include_router(categories.router)
 app.include_router(meals.router)
+app.include_router(ingredients.router)
+app.include_router(bring.router)
 app.include_router(daily_menu.router)
 
 
