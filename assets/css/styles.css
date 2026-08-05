@@ -450,6 +450,86 @@
             cursor: pointer;
         }
 
+        .ingredient-results,
+        .ingredient-selected {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            padding: 8px;
+            margin-top: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .ingredient-picker-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 4px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ingredient-picker-row:last-child {
+            border-bottom: none;
+        }
+
+        .ingredient-picker-name {
+            font-size: 0.88rem;
+            color: #000;
+            word-break: break-word;
+        }
+
+        .ingredient-add-btn,
+        .ingredient-remove-btn {
+            border: none;
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .ingredient-add-btn {
+            background: #DDF2D5;
+            color: #000;
+        }
+
+        .ingredient-add-btn:hover {
+            background: #C5E8BB;
+        }
+
+        .ingredient-remove-btn {
+            background: #2F6E39;
+            color: #fff;
+        }
+
+        .ingredient-remove-btn:hover {
+            background: #275E31;
+        }
+
+        .ingredient-selected-row {
+            display: grid;
+            grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            padding: 6px 4px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ingredient-selected-row:last-child {
+            border-bottom: none;
+        }
+
+        .ingredient-spec-input {
+            width: 100%;
+            padding: 7px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.82rem;
+        }
+
         .search-filter-section {
             display: flex;
             flex-direction: column;

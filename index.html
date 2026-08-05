@@ -110,7 +110,9 @@
                 </div>
                 <div class="form-group">
                     <label>Ingredientes</label>
-                    <div id="ingredientsCheckboxes" class="checkbox-group"></div>
+                    <input type="text" id="ingredientSearch1" class="search-input" placeholder="Buscar ingrediente..." oninput="app.updateIngredientSearch(1)">
+                    <div id="ingredientsResults1" class="ingredient-results"></div>
+                    <div id="ingredientsSelected1" class="ingredient-selected"></div>
                 </div>
                 <div class="form-group">
                     <label for="mealSteps">Pasos (uno por línea)</label>
@@ -144,7 +146,9 @@
                 </div>
                 <div class="form-group">
                     <label>Ingredientes</label>
-                    <div id="ingredientsCheckboxes2" class="checkbox-group"></div>
+                    <input type="text" id="ingredientSearch2" class="search-input" placeholder="Buscar ingrediente..." oninput="app.updateIngredientSearch(2)">
+                    <div id="ingredientsResults2" class="ingredient-results"></div>
+                    <div id="ingredientsSelected2" class="ingredient-selected"></div>
                 </div>
                 <div class="form-group">
                     <label for="mealSteps2">Pasos (uno por línea)</label>

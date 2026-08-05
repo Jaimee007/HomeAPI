@@ -31,6 +31,8 @@ const getApiBaseUrl = () => {
                 this.currentMealView = 'all';
                 this.manageMealsMode = 'all';
                 this.editingMealId = null;
+                this.selectedIngredientsForm1 = new Map();
+                this.selectedIngredientsForm2 = new Map();
                 this.selectedMealsForBring = [];
                 this.bringSettings = this.loadBringSettings();
                 this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
@@ -637,6 +639,134 @@ const getApiBaseUrl = () => {
                     .map(texto => ({ texto }));
             }
 
+            getIngredientSelectionMap(formNumber) {
+                return formNumber === 2 ? this.selectedIngredientsForm2 : this.selectedIngredientsForm1;
+            }
+
+            updateIngredientSearch(formNumber) {
+                this.renderIngredientPicker(formNumber);
+            }
+
+            addIngredientToForm(formNumber, ingredientId) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                const ingredient = (this.ingredients || []).find(ing => ing.id === ingredientId);
+                if (!ingredient || map.has(ingredientId)) return;
+                map.set(ingredientId, {
+                    ingredient_id: ingredient.id,
+                    nombre: ingredient.nombre,
+                    spec: ''
+                });
+                this.renderIngredientPicker(formNumber);
+            }
+
+            removeIngredientFromForm(formNumber, ingredientId) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                map.delete(ingredientId);
+                this.renderIngredientPicker(formNumber);
+            }
+
+            updateIngredientSpec(formNumber, ingredientId, value) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                const current = map.get(ingredientId);
+                if (!current) return;
+                current.spec = value;
+                map.set(ingredientId, current);
+            }
+
+            getSelectedIngredientEntries(formNumber) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                return Array.from(map.values()).map(entry => ({
+                    ingredient_id: entry.ingredient_id,
+                    spec: entry.spec && entry.spec.trim().length > 0 ? entry.spec.trim() : null
+                }));
+            }
+
+            renderIngredientPicker(formNumber) {
+                const searchInput = document.getElementById(`ingredientSearch${formNumber}`);
+                const resultsContainer = document.getElementById(`ingredientsResults${formNumber}`);
+                const selectedContainer = document.getElementById(`ingredientsSelected${formNumber}`);
+                if (!resultsContainer || !selectedContainer) return;
+
+                const map = this.getIngredientSelectionMap(formNumber);
+                const allIngredients = Array.isArray(this.ingredients) ? this.ingredients : [];
+                const term = (searchInput?.value || '').trim().toLowerCase();
+
+                resultsContainer.innerHTML = '';
+                if (allIngredients.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
+                } else {
+                    const filtered = allIngredients
+                        .filter(ing => (ing.nombre || '').toLowerCase().includes(term))
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
+                        .slice(0, 30);
+
+                    if (filtered.length === 0) {
+                        resultsContainer.innerHTML = '<div class="no-results">Sin resultados</div>';
+                    } else {
+                        filtered.forEach(ing => {
+                            const row = document.createElement('div');
+                            row.className = 'ingredient-picker-row';
+
+                            const name = document.createElement('span');
+                            name.className = 'ingredient-picker-name';
+                            name.textContent = ing.nombre;
+                            row.appendChild(name);
+
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.className = 'ingredient-add-btn';
+
+                            if (map.has(ing.id)) {
+                                button.textContent = 'Añadido';
+                                button.disabled = true;
+                                button.style.opacity = '0.65';
+                                button.style.cursor = 'default';
+                            } else {
+                                button.textContent = 'Añadir';
+                                button.onclick = () => this.addIngredientToForm(formNumber, ing.id);
+                            }
+
+                            row.appendChild(button);
+                            resultsContainer.appendChild(row);
+                        });
+                    }
+                }
+
+                selectedContainer.innerHTML = '';
+                const selected = Array.from(map.values()).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+                if (selected.length === 0) {
+                    selectedContainer.innerHTML = '<div class="no-results">Sin ingredientes seleccionados</div>';
+                    return;
+                }
+
+                selected.forEach(entry => {
+                    const row = document.createElement('div');
+                    row.className = 'ingredient-selected-row';
+
+                    const name = document.createElement('span');
+                    name.className = 'ingredient-picker-name';
+                    name.textContent = entry.nombre;
+                    row.appendChild(name);
+
+                    const specInput = document.createElement('input');
+                    specInput.type = 'text';
+                    specInput.className = 'ingredient-spec-input';
+                    specInput.placeholder = 'Cantidad / especificación';
+                    specInput.value = entry.spec || '';
+                    specInput.oninput = (e) => this.updateIngredientSpec(formNumber, entry.ingredient_id, e.target.value);
+                    row.appendChild(specInput);
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'ingredient-remove-btn';
+                    removeButton.textContent = 'Quitar';
+                    removeButton.onclick = () => this.removeIngredientFromForm(formNumber, entry.ingredient_id);
+                    row.appendChild(removeButton);
+
+                    selectedContainer.appendChild(row);
+                });
+            }
+
             assignSearchAsTempRecipe() {
                 const name = this.getCurrentSearchText();
                 if (!name) return;
@@ -962,15 +1092,7 @@ const getApiBaseUrl = () => {
                 e.preventDefault();
                 const name = document.getElementById('mealName').value;
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes input:checked')).map(cb => parseInt(cb.value));
-                const ingredientEntries = Array.from(document.querySelectorAll('#ingredientsCheckboxes .ingredient-row')).map(row => {
-                    const checkbox = row.querySelector('input[type="checkbox"]');
-                    const specInput = row.querySelector('input[type="text"]');
-                    return {
-                        ingredient_id: parseInt(checkbox.value),
-                        spec: checkbox.checked ? specInput.value.trim() : null,
-                        selected: checkbox.checked
-                    };
-                }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
+                const ingredientEntries = this.getSelectedIngredientEntries(1);
                 const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps')?.value || '');
 
                 try {
@@ -985,6 +1107,8 @@ const getApiBaseUrl = () => {
                         setTimeout(() => {
                             closeModal('addMealModal');
                             document.getElementById('addMealForm').reset();
+                            this.selectedIngredientsForm1.clear();
+                            this.renderIngredientPicker(1);
                         }, 1000);
                         await this.loadData();
                         this.renderCalendar();
@@ -1000,15 +1124,7 @@ const getApiBaseUrl = () => {
                 e.preventDefault();
                 const name = document.getElementById('mealName2').value;
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes2 input:checked')).map(cb => parseInt(cb.value));
-                const ingredientEntries = Array.from(document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row')).map(row => {
-                    const checkbox = row.querySelector('input[type="checkbox"]');
-                    const specInput = row.querySelector('input[type="text"]');
-                    return {
-                        ingredient_id: parseInt(checkbox.value),
-                        spec: checkbox.checked ? specInput.value.trim() : null,
-                        selected: checkbox.checked
-                    };
-                }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
+                const ingredientEntries = this.getSelectedIngredientEntries(2);
                 const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps2')?.value || '');
                 const payload = { nombre: name, category_ids: categoryIds, ingredient_entries: ingredientEntries, steps };
                 const isEditing = Number.isInteger(this.editingMealId);
@@ -1304,12 +1420,10 @@ const getApiBaseUrl = () => {
                 document.querySelectorAll('#categoriesCheckboxes2 input[type="checkbox"]').forEach(cb => {
                     cb.checked = false;
                 });
-                document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row').forEach(row => {
-                    const checkbox = row.querySelector('input[type="checkbox"]');
-                    const specInput = row.querySelector('input[type="text"]');
-                    if (checkbox) checkbox.checked = false;
-                    if (specInput) specInput.value = '';
-                });
+                this.selectedIngredientsForm2.clear();
+                const searchInput = document.getElementById('ingredientSearch2');
+                if (searchInput) searchInput.value = '';
+                this.renderIngredientPicker(2);
                 const stepsField = document.getElementById('mealSteps2');
                 if (stepsField) stepsField.value = '';
             }
@@ -1324,22 +1438,17 @@ const getApiBaseUrl = () => {
                     cb.checked = categoryIds.includes(parseInt(cb.value));
                 });
 
-                const mealIngredientsById = new Map(
-                    (meal.ingredients || []).map(ing => [ing.ingredient_id ?? ing.id, ing])
-                );
-                document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row').forEach(row => {
-                    const checkbox = row.querySelector('input[type="checkbox"]');
-                    const specInput = row.querySelector('input[type="text"]');
-                    const ingredientId = parseInt(checkbox.value);
-                    const mealIngredient = mealIngredientsById.get(ingredientId);
-                    if (mealIngredient) {
-                        checkbox.checked = true;
-                        specInput.value = mealIngredient.spec || '';
-                    } else {
-                        checkbox.checked = false;
-                        specInput.value = '';
-                    }
+                this.selectedIngredientsForm2.clear();
+                (meal.ingredients || []).forEach(ing => {
+                    const ingredientId = ing.ingredient_id ?? ing.id;
+                    if (!ingredientId) return;
+                    this.selectedIngredientsForm2.set(ingredientId, {
+                        ingredient_id: ingredientId,
+                        nombre: ing.nombre || '',
+                        spec: ing.spec || ''
+                    });
                 });
+                this.renderIngredientPicker(2);
 
                 const stepsField = document.getElementById('mealSteps2');
                 if (stepsField) {
@@ -1359,35 +1468,11 @@ const getApiBaseUrl = () => {
             }
 
             renderIngredientsCheckboxes() {
-                const container = document.getElementById('ingredientsCheckboxes');
-                if (!container) return;
-                container.innerHTML = '';
-                if (this.ingredients.length === 0) {
-                    container.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
-                    return;
-                }
-                this.ingredients.forEach(ing => {
-                    const row = document.createElement('div');
-                    row.className = 'ingredient-row';
-                    row.innerHTML = `<label class="checkbox-item"><input type="checkbox" value="${ing.id}"><span>${ing.nombre}</span></label><input type="text" class="ingredient-spec" placeholder="Cantidad / especificación" data-ing-id="${ing.id}">`;
-                    container.appendChild(row);
-                });
+                this.renderIngredientPicker(1);
             }
 
             renderIngredientsCheckboxes2() {
-                const container = document.getElementById('ingredientsCheckboxes2');
-                if (!container) return;
-                container.innerHTML = '';
-                if (this.ingredients.length === 0) {
-                    container.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
-                    return;
-                }
-                this.ingredients.forEach(ing => {
-                    const row = document.createElement('div');
-                    row.className = 'ingredient-row';
-                    row.innerHTML = `<label class="checkbox-item"><input type="checkbox" value="${ing.id}"><span>${ing.nombre}</span></label><input type="text" class="ingredient-spec" placeholder="Cantidad / especificación" data-ing-id="${ing.id}">`;
-                    container.appendChild(row);
-                });
+                this.renderIngredientPicker(2);
             }
 
             renderIngredientsList() {
@@ -1542,6 +1627,10 @@ const getApiBaseUrl = () => {
         function openAddMealModal() {
             if (!window.app) return;
             try {
+                document.getElementById('addMealForm')?.reset();
+                window.app.selectedIngredientsForm1.clear();
+                const searchInput = document.getElementById('ingredientSearch1');
+                if (searchInput) searchInput.value = '';
                 window.app.renderCategoriesCheckboxes();
                 window.app.renderIngredientsCheckboxes();
                 document.getElementById('addMealModal').classList.add('active');
