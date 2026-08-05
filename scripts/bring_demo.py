@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import getpass
 import os
 import sys
 
@@ -18,7 +19,10 @@ async def show_purchase_items(bring, list_uuid, list_name):
     purchase = items.get('purchase', []) or []
     print(f'Ítems de compra en "{list_name}": {len(purchase)}')
     for item in purchase:
-        print(f" - {item.get('name')} (spec={item.get('spec')})")
+        specification = item.get('specification')
+        if specification is None:
+            specification = item.get('spec')
+        print(f" - {item.get('name')} (spec={specification})")
 
 
 async def add_purchase_item(bring, list_uuid, item_name, specification=None):
@@ -29,15 +33,23 @@ async def add_purchase_item(bring, list_uuid, item_name, specification=None):
 
 async def main():
     parser = argparse.ArgumentParser(description='Prueba Bring! API para tu lista de compras.')
+    parser.add_argument('--email', help='Correo de Bring!')
+    parser.add_argument('--password', help='Contraseña de Bring!')
     parser.add_argument('--add', help='Nombre del ingrediente a añadir a la lista')
     parser.add_argument('--spec', help='Especificación del ingrediente (opcional)')
     parser.add_argument('--list-uuid', help='UUID de la lista Bring! a usar')
     args = parser.parse_args()
 
-    email = os.getenv('BRING_EMAIL')
-    password = os.getenv('BRING_PASSWORD')
+    email = args.email or os.getenv('BRING_EMAIL')
+    password = args.password or os.getenv('BRING_PASSWORD')
+
+    if not email:
+        email = input('Correo de Bring!: ').strip()
+    if not password:
+        password = getpass.getpass('Contraseña de Bring!: ').strip()
+
     if not email or not password:
-        print('Error: define BRING_EMAIL y BRING_PASSWORD en el entorno')
+        print('Error: faltan credenciales de Bring!')
         sys.exit(1)
 
     target_uuid = args.list_uuid or os.getenv('BRING_LIST_UUID', 'a5492637-1aff-45e0-b1e3-1c0a1e48bde9')

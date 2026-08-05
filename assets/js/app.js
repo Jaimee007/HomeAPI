@@ -29,7 +29,10 @@ const getApiBaseUrl = () => {
                 this.selectedCategoryIds = [];
                 this.pendingCategoryIds = [];
                 this.currentMealView = 'all';
+                this.manageMealsMode = 'all';
+                this.editingMealId = null;
                 this.selectedMealsForBring = [];
+                this.bringSettings = this.loadBringSettings();
                 this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
                 this.recentMealIds = this.loadStoredIds('homeapi_recent_meals');
                 this.historyStack = [];
@@ -53,6 +56,72 @@ const getApiBaseUrl = () => {
 
             storeIds(key, ids) {
                 localStorage.setItem(key, JSON.stringify(ids));
+            }
+
+            loadBringSettings() {
+                try {
+                    const raw = localStorage.getItem('homeapi_bring_settings');
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    return {
+                        bring_email: typeof parsed.bring_email === 'string' ? parsed.bring_email : '',
+                        bring_password: typeof parsed.bring_password === 'string' ? parsed.bring_password : ''
+                    };
+                } catch (e) {
+                    return { bring_email: '', bring_password: '' };
+                }
+            }
+
+            saveBringSettings() {
+                localStorage.setItem('homeapi_bring_settings', JSON.stringify(this.bringSettings));
+            }
+
+            configureBringSettings() {
+                const email = prompt('Correo de Bring!', this.bringSettings.bring_email || '');
+                if (email === null) return false;
+
+                const password = prompt('Contraseña de Bring! (se guarda en este dispositivo)', this.bringSettings.bring_password || '');
+                if (password === null) return false;
+
+                this.bringSettings = {
+                    bring_email: email.trim(),
+                    bring_password: password
+                };
+
+                this.saveBringSettings();
+                this.showMessage('bringMessage', 'Configuración de Bring guardada en este dispositivo', 'success');
+                return true;
+            }
+
+            getBringPayloadSettings() {
+                const payload = {};
+                const email = (this.bringSettings.bring_email || '').trim();
+                const password = this.bringSettings.bring_password || '';
+
+                if (email) payload.bring_email = email;
+                if (password) payload.bring_password = password;
+                return payload;
+            }
+
+            shouldPromptBringSettings(detail) {
+                if (!detail) return false;
+                const text = String(detail).toLowerCase();
+                return text.includes('credentials') || text.includes('uuid') || text.includes('login failed');
+            }
+
+            async postBringIngredients(mealIds) {
+                const payload = {
+                    meal_ids: mealIds,
+                    ...this.getBringPayloadSettings()
+                };
+
+                const response = await fetch(`${API_BASE_URL}/bring/add-recipe-ingredients`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                return { response, result };
             }
 
             async init() {
@@ -266,14 +335,16 @@ const getApiBaseUrl = () => {
 
             async loadData() {
                 try {
-                    const mealsRes = await fetch(`${API_BASE_URL}/meals`, { headers: { 'X-API-Key': API_KEY } });
-                    const categoriesRes = await fetch(`${API_BASE_URL}/categories`, { headers: { 'X-API-Key': API_KEY } });
-                    const ingredientsRes = await fetch(`${API_BASE_URL}/ingredients`, { headers: { 'X-API-Key': API_KEY } });
-                    const menusRes = await fetch(`${API_BASE_URL}/daily-menu`, { headers: { 'X-API-Key': API_KEY } });
+                    const mealsRes = await fetch(`${API_BASE_URL}/meals/`, { headers: { 'X-API-Key': API_KEY } });
+                    const categoriesRes = await fetch(`${API_BASE_URL}/categories/`, { headers: { 'X-API-Key': API_KEY } });
+                    const ingredientsRes = await fetch(`${API_BASE_URL}/ingredients/`, { headers: { 'X-API-Key': API_KEY } });
+                    const menusRes = await fetch(`${API_BASE_URL}/daily-menu/`, { headers: { 'X-API-Key': API_KEY } });
 
                     this.meals = await mealsRes.json();
                     this.categories = await categoriesRes.json();
                     this.ingredients = await ingredientsRes.json();
+                    const mealIds = new Set(this.meals.map(m => m.id));
+                    this.selectedMealsForBring = this.selectedMealsForBring.filter(id => mealIds.has(id));
                     
                     let menus = [];
                     if (menusRes.ok) {
@@ -289,6 +360,7 @@ const getApiBaseUrl = () => {
                     }
 
                     this.updateSummary();
+                    this.updateBringSelectionInfo();
                 } catch (error) {
                     console.error('❌ Error cargando datos:', error);
                 }
@@ -340,7 +412,7 @@ const getApiBaseUrl = () => {
 
                 const lunch = menu?.meal_lunch;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
+                    <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.handleMealSlotClick('${key}', 'lunch')">
                         ${lunch ? `
                             <div class="meal-info">
                                 <span class="meal-name">${lunch.nombre}</span>
@@ -353,7 +425,7 @@ const getApiBaseUrl = () => {
 
                 const dinner = menu?.meal_dinner;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
+                    <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.handleMealSlotClick('${key}', 'dinner')">
                         ${dinner ? `
                             <div class="meal-info">
                                 <span class="meal-name">${dinner.nombre}</span>
@@ -367,6 +439,61 @@ const getApiBaseUrl = () => {
                 html += '</div>';
                 dayCard.innerHTML = html;
                 return dayCard;
+            }
+
+            handleMealSlotClick(dateKey, type) {
+                const menu = this.dailyMenus[dateKey];
+                const meal = type === 'lunch' ? menu?.meal_lunch : menu?.meal_dinner;
+
+                if (!meal) {
+                    this.selectedDay = dateKey;
+                    this.selectedMealType = type;
+                    this.openSelectMealModal();
+                    return;
+                }
+
+                this.showMealDetails(meal);
+            }
+
+            showMealDetails(meal) {
+                const title = document.getElementById('mealDetailsTitle');
+                const ingredientsList = document.getElementById('mealDetailsIngredients');
+                const stepsList = document.getElementById('mealDetailsSteps');
+
+                if (!title || !ingredientsList || !stepsList) return;
+
+                title.textContent = meal.nombre || 'Detalle de Receta';
+
+                ingredientsList.innerHTML = '';
+                const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+                if (ingredients.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Sin ingredientes definidos';
+                    ingredientsList.appendChild(li);
+                } else {
+                    ingredients.forEach(ingredient => {
+                        const li = document.createElement('li');
+                        const spec = ingredient.spec ? ` (${ingredient.spec})` : '';
+                        li.textContent = `${ingredient.nombre}${spec}`;
+                        ingredientsList.appendChild(li);
+                    });
+                }
+
+                stepsList.innerHTML = '';
+                const steps = Array.isArray(meal.steps) ? meal.steps : [];
+                if (steps.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Sin pasos definidos';
+                    stepsList.appendChild(li);
+                } else {
+                    steps.forEach(step => {
+                        const li = document.createElement('li');
+                        li.textContent = step.texto || '';
+                        stepsList.appendChild(li);
+                    });
+                }
+
+                document.getElementById('mealDetailsModal').classList.add('active');
             }
 
             isToday(date) {
@@ -490,13 +617,24 @@ const getApiBaseUrl = () => {
                         ? `No existe "${trimmedSearch}"`
                         : '❌ No se encontraron recetas';
                     if (addTempBtn) {
-                        addTempBtn.style.display = 'none';
+                        addTempBtn.style.display = trimmedSearch.length > 0 ? 'inline-flex' : 'none';
                     }
+                } else if (addTempBtn) {
+                    addTempBtn.style.display = 'none';
                 }
             }
 
             getCurrentSearchText() {
                 return (document.getElementById('mealSearchInput')?.value || '').trim();
+            }
+
+            parseStepsFromTextarea(textValue) {
+                if (!textValue) return [];
+                return textValue
+                    .split('\n')
+                    .map(step => step.trim())
+                    .filter(step => step.length > 0)
+                    .map(texto => ({ texto }));
             }
 
             assignSearchAsTempRecipe() {
@@ -769,7 +907,7 @@ const getApiBaseUrl = () => {
 
             async createDailyMenu(data) {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/daily-menu`, {
+                    const response = await fetch(`${API_BASE_URL}/daily-menu/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
@@ -833,12 +971,13 @@ const getApiBaseUrl = () => {
                         selected: checkbox.checked
                     };
                 }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
+                const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps')?.value || '');
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/meals`, {
+                    const response = await fetch(`${API_BASE_URL}/meals/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredient_entries })
+                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredientEntries, steps })
                     });
 
                     if (response.ok) {
@@ -870,25 +1009,34 @@ const getApiBaseUrl = () => {
                         selected: checkbox.checked
                     };
                 }).filter(entry => entry.selected).map(entry => ({ ingredient_id: entry.ingredient_id, spec: entry.spec }));
+                const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps2')?.value || '');
+                const payload = { nombre: name, category_ids: categoryIds, ingredient_entries: ingredientEntries, steps };
+                const isEditing = Number.isInteger(this.editingMealId);
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/meals`, {
-                        method: 'POST',
+                    const url = isEditing ? `${API_BASE_URL}/meals/${this.editingMealId}` : `${API_BASE_URL}/meals/`;
+                    const method = isEditing ? 'PUT' : 'POST';
+                    const response = await fetch(url, {
+                        method,
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredient_entries })
+                        body: JSON.stringify(payload)
                     });
 
                     if (response.ok) {
-                        document.getElementById('addMealForm2').reset();
+                        this.showMessage('mealsMessage', isEditing ? 'Receta actualizada correctamente' : 'Receta creada correctamente', 'success');
+                        this.editingMealId = null;
+                        this.resetManageMealForm();
+                        this.updateManageMealFormMode();
                         await this.loadData();
                         this.renderMealsList();
                         this.renderCategoriesCheckboxes2();
                         this.renderIngredientsCheckboxes2();
                     } else {
-                        alert('Error al crear la receta');
+                        const error = await response.json().catch(() => ({}));
+                        this.showMessage('mealsMessage', error.detail || 'Error al guardar la receta', 'error');
                     }
                 } catch (error) {
-                    alert('Error: ' + error.message);
+                    this.showMessage('mealsMessage', 'Error: ' + error.message, 'error');
                 }
             }
 
@@ -897,7 +1045,7 @@ const getApiBaseUrl = () => {
                 const name = document.getElementById('categoryName').value;
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/categories`, {
+                    const response = await fetch(`${API_BASE_URL}/categories/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nombre: name })
@@ -968,15 +1116,21 @@ const getApiBaseUrl = () => {
             renderMealsList() {
                 const container = document.getElementById('mealsList');
                 container.innerHTML = '';
-                this.meals.forEach(meal => {
-                    const selected = this.selectedMealsForBring.includes(meal.id);
+
+                const sortedMeals = [...this.meals].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
+                if (sortedMeals.length === 0) {
+                    const item = document.createElement('div');
+                    item.className = 'no-results';
+                    item.textContent = 'No hay recetas disponibles';
+                    container.appendChild(item);
+                    return;
+                }
+
+                sortedMeals.forEach(meal => {
                     const item = document.createElement('div');
                     item.className = 'item';
                     item.innerHTML = `
-                        <div class="item-select">
-                            <input type="checkbox" id="select-meal-${meal.id}" ${selected ? 'checked' : ''} onchange="app.toggleMealSelectionForBring(${meal.id})">
-                            <label for="select-meal-${meal.id}">Seleccionar</label>
-                        </div>
                         <div class="item-info">
                             <div class="item-name">${meal.nombre}</div>
                             <div class="item-meta">${meal.ingredients?.length || 0} ingrediente(s)</div>
@@ -990,6 +1144,138 @@ const getApiBaseUrl = () => {
                 });
             }
 
+            renderBringMealsList() {
+                const container = document.getElementById('bringMealsList');
+                if (!container) return;
+                container.innerHTML = '';
+
+                const windowInfo = this.getBringMealWindowInfo();
+                const sourceMeals = this.getMealsForBringWindow();
+                const sourceMealIds = new Set(sourceMeals.map(meal => meal.id));
+                this.selectedMealsForBring = this.selectedMealsForBring.filter(id => sourceMealIds.has(id));
+
+                const sortedMeals = [...sourceMeals].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
+                if (sortedMeals.length === 0) {
+                    const item = document.createElement('div');
+                    item.className = 'no-results';
+                    item.textContent = 'No hay recetas planificadas desde hoy para enviar a Bring!';
+                    container.appendChild(item);
+                    this.updateBringSelectionInfo();
+                    return;
+                }
+
+                sortedMeals.forEach(meal => {
+                    const selected = this.selectedMealsForBring.includes(meal.id);
+                    const schedule = this.getBringMealScheduleText(meal.id, windowInfo.mealScheduleById);
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerHTML = `
+                        <div class="item-select">
+                            <input type="checkbox" id="bring-select-meal-${meal.id}" ${selected ? 'checked' : ''} onchange="app.toggleMealSelectionForBring(${meal.id})">
+                            <label for="bring-select-meal-${meal.id}">Seleccionar</label>
+                        </div>
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-meta">${meal.ingredients?.length || 0} ingrediente(s)</div>
+                            <div class="item-meta">📅 ${schedule}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                this.updateBringSelectionInfo();
+            }
+
+            getBringMealWindowInfo() {
+                const todayKey = this.getDateKey(new Date());
+                const keys = Object.keys(this.dailyMenus).sort();
+
+                let lastKeyWithMeal = null;
+                keys.forEach(key => {
+                    if (key < todayKey) return;
+                    const menu = this.dailyMenus[key];
+                    if (!menu) return;
+                    if (menu.meal_lunch || menu.meal_dinner) {
+                        lastKeyWithMeal = key;
+                    }
+                });
+
+                const mealIds = new Set();
+                const mealScheduleById = {};
+
+                if (!lastKeyWithMeal) {
+                    return { todayKey, lastKeyWithMeal: null, mealIds, mealScheduleById };
+                }
+
+                keys.forEach(key => {
+                    if (key < todayKey || key > lastKeyWithMeal) return;
+                    const menu = this.dailyMenus[key];
+                    if (!menu) return;
+
+                    const entries = [
+                        { id: menu.meal_lunch_id, slot: 'Almuerzo' },
+                        { id: menu.meal_dinner_id, slot: 'Cena' }
+                    ];
+
+                    entries.forEach(entry => {
+                        if (!Number.isInteger(entry.id) || entry.id <= 0) return;
+                        mealIds.add(entry.id);
+                        if (!mealScheduleById[entry.id]) {
+                            mealScheduleById[entry.id] = [];
+                        }
+                        mealScheduleById[entry.id].push({ dateKey: key, slot: entry.slot });
+                    });
+                });
+
+                return { todayKey, lastKeyWithMeal, mealIds, mealScheduleById };
+            }
+
+            getMealsForBringWindow() {
+                const { mealIds } = this.getBringMealWindowInfo();
+                return this.meals.filter(meal => mealIds.has(meal.id));
+            }
+
+            getBringMealScheduleText(mealId, mealScheduleById) {
+                const scheduleItems = mealScheduleById?.[mealId] || [];
+                if (scheduleItems.length === 0) {
+                    return 'sin fecha planificada';
+                }
+
+                return scheduleItems
+                    .map(item => `${this.formatDateKeyForHumans(item.dateKey)} (${item.slot})`)
+                    .join(' · ');
+            }
+
+            formatDateKeyForHumans(key) {
+                const [year, month, day] = key.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            updateBringSelectionInfo() {
+                const info = document.getElementById('bringSelectionInfo');
+                if (!info) return;
+                const count = this.selectedMealsForBring.length;
+                if (this.manageMealsMode === 'bring') {
+                    const windowInfo = this.getBringMealWindowInfo();
+                    if (!windowInfo.lastKeyWithMeal) {
+                        info.textContent = 'Sin recetas planificadas desde hoy para Bring!';
+                        return;
+                    }
+
+                    const from = this.formatDateKeyForHumans(windowInfo.todayKey);
+                    const to = this.formatDateKeyForHumans(windowInfo.lastKeyWithMeal);
+                    const selectedText = count === 0
+                        ? 'sin selección'
+                        : `${count} seleccionada(s)`;
+                    info.textContent = `Ventana Bring!: ${from} - ${to} (${selectedText})`;
+                    return;
+                }
+
+                info.textContent = count === 0
+                    ? 'No hay recetas seleccionadas para Bring!'
+                    : `${count} receta(s) seleccionada(s) para Bring!`;
+            }
+
             renderCategoriesCheckboxes2() {
                 const container = document.getElementById('categoriesCheckboxes2');
                 container.innerHTML = '';
@@ -999,6 +1285,77 @@ const getApiBaseUrl = () => {
                     label.innerHTML = `<input type="checkbox" value="${cat.id}"><span>${cat.nombre}</span>`;
                     container.appendChild(label);
                 });
+            }
+
+            updateManageMealFormMode() {
+                const title = document.getElementById('manageMealFormTitle');
+                const submitBtn = document.getElementById('manageMealSubmitBtn');
+                const cancelBtn = document.getElementById('manageMealCancelEditBtn');
+                const isEditing = Number.isInteger(this.editingMealId);
+
+                if (title) title.textContent = isEditing ? 'Editar Receta' : 'Nueva Receta';
+                if (submitBtn) submitBtn.textContent = isEditing ? 'Guardar cambios' : 'Agregar Receta';
+                if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';
+            }
+
+            resetManageMealForm() {
+                const form = document.getElementById('addMealForm2');
+                if (form) form.reset();
+                document.querySelectorAll('#categoriesCheckboxes2 input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+                document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row').forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const specInput = row.querySelector('input[type="text"]');
+                    if (checkbox) checkbox.checked = false;
+                    if (specInput) specInput.value = '';
+                });
+                const stepsField = document.getElementById('mealSteps2');
+                if (stepsField) stepsField.value = '';
+            }
+
+            populateManageMealFormForEdit(meal) {
+                if (!meal) return;
+
+                document.getElementById('mealName2').value = meal.nombre || '';
+
+                const categoryIds = (meal.categories || []).map(c => c.id);
+                document.querySelectorAll('#categoriesCheckboxes2 input[type="checkbox"]').forEach(cb => {
+                    cb.checked = categoryIds.includes(parseInt(cb.value));
+                });
+
+                const mealIngredientsById = new Map(
+                    (meal.ingredients || []).map(ing => [ing.ingredient_id ?? ing.id, ing])
+                );
+                document.querySelectorAll('#ingredientsCheckboxes2 .ingredient-row').forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const specInput = row.querySelector('input[type="text"]');
+                    const ingredientId = parseInt(checkbox.value);
+                    const mealIngredient = mealIngredientsById.get(ingredientId);
+                    if (mealIngredient) {
+                        checkbox.checked = true;
+                        specInput.value = mealIngredient.spec || '';
+                    } else {
+                        checkbox.checked = false;
+                        specInput.value = '';
+                    }
+                });
+
+                const stepsField = document.getElementById('mealSteps2');
+                if (stepsField) {
+                    const stepsText = (meal.steps || [])
+                        .map(step => step?.texto || '')
+                        .filter(text => text.trim().length > 0)
+                        .join('\n');
+                    stepsField.value = stepsText;
+                }
+            }
+
+            cancelMealEdit() {
+                this.editingMealId = null;
+                this.resetManageMealForm();
+                this.updateManageMealFormMode();
+                this.showMessage('mealsMessage', 'Edición cancelada', 'success');
             }
 
             renderIngredientsCheckboxes() {
@@ -1049,7 +1406,7 @@ const getApiBaseUrl = () => {
                 e.preventDefault();
                 const name = document.getElementById('ingredientName').value;
                 try {
-                    const response = await fetch(`${API_BASE_URL}/ingredients`, {
+                    const response = await fetch(`${API_BASE_URL}/ingredients/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nombre: name })
@@ -1093,7 +1450,13 @@ const getApiBaseUrl = () => {
                 } else {
                     this.selectedMealsForBring.push(mealId);
                 }
-                this.renderMealsList();
+                this.renderBringMealsList();
+            }
+
+            clearBringSelection() {
+                this.selectedMealsForBring = [];
+                this.renderBringMealsList();
+                this.showMessage('bringMessage', 'Selección limpia', 'success');
             }
 
             async addSelectedRecipeIngredientsToBring() {
@@ -1102,22 +1465,30 @@ const getApiBaseUrl = () => {
                     return;
                 }
                 try {
-                    const response = await fetch(`${API_BASE_URL}/bring/add-recipe-ingredients`, {
-                        method: 'POST',
-                        headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ meal_ids: this.selectedMealsForBring })
-                    });
-                    const result = await response.json();
+                    let { response, result } = await this.postBringIngredients(this.selectedMealsForBring);
+
+                    if (!response.ok && this.shouldPromptBringSettings(result?.detail)) {
+                        const configured = this.configureBringSettings();
+                        if (!configured) {
+                            this.showMessage('bringMessage', 'Configuración de Bring cancelada', 'error');
+                            return;
+                        }
+                        ({ response, result } = await this.postBringIngredients(this.selectedMealsForBring));
+                    }
+
                     if (response.ok) {
-                        alert(`Ingredientes añadidos: ${result.added.length}`);
+                        const skipped = result.skipped_duplicates?.length || 0;
+                        const errorsCount = result.errors?.length || 0;
+                        const detail = `Añadidos: ${result.added.length} · Duplicados omitidos: ${skipped} · Errores: ${errorsCount}`;
+                        this.showMessage('bringMessage', detail, errorsCount > 0 ? 'error' : 'success');
                         this.selectedMealsForBring = [];
-                        this.renderMealsList();
+                        this.renderBringMealsList();
                     } else {
-                        alert('Error al añadir ingredientes: ' + (result.detail || JSON.stringify(result)));
+                        this.showMessage('bringMessage', 'Error al añadir ingredientes: ' + (result.detail || JSON.stringify(result)), 'error');
                     }
                 } catch (error) {
                     console.error('Error añadiendo ingredientes a Bring:', error);
-                    alert('Error añadiendo ingredientes a Bring: ' + error.message);
+                    this.showMessage('bringMessage', 'Error añadiendo ingredientes a Bring: ' + error.message, 'error');
                 }
             }
 
@@ -1132,6 +1503,11 @@ const getApiBaseUrl = () => {
 
                     if (response.ok) {
                         this.showMessage('mealsMessage', 'Receta eliminada', 'success');
+                        if (this.editingMealId === id) {
+                            this.editingMealId = null;
+                            this.resetManageMealForm();
+                            this.updateManageMealFormMode();
+                        }
                         await this.loadData();
                         this.renderMealsList();
                         this.renderCalendar();
@@ -1142,7 +1518,24 @@ const getApiBaseUrl = () => {
             }
 
             editMeal(id) {
-                this.showMessage('mealsMessage', 'Editar recetas - próximamente', 'error');
+                const meal = this.meals.find(m => m.id === id);
+                if (!meal) {
+                    this.showMessage('mealsMessage', 'No se encontró la receta para editar', 'error');
+                    return;
+                }
+
+                this.editingMealId = id;
+                this.updateManageMealFormMode();
+                this.renderCategoriesCheckboxes2();
+                this.renderIngredientsCheckboxes2();
+                this.populateManageMealFormForEdit(meal);
+                this.showMessage('mealsMessage', `Editando receta: ${meal.nombre}`, 'success');
+
+                const nameInput = document.getElementById('mealName2');
+                if (nameInput) {
+                    nameInput.focus();
+                    nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
 
@@ -1157,15 +1550,30 @@ const getApiBaseUrl = () => {
             }
         }
 
-        function openManageMealsModal() {
+        function openManageMealsModal(mode = 'all') {
             if (!window.app) return;
             try {
-                window.app.renderMealsList();
+                window.app.manageMealsMode = 'all';
+                window.app.editingMealId = null;
                 window.app.renderCategoriesCheckboxes2();
                 window.app.renderIngredientsCheckboxes2();
+                window.app.resetManageMealForm();
+                window.app.updateManageMealFormMode();
+                window.app.renderMealsList();
                 document.getElementById('manageMealsModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
+            }
+        }
+
+        function openBringModal() {
+            if (!window.app) return;
+            try {
+                window.app.manageMealsMode = 'bring';
+                window.app.renderBringMealsList();
+                document.getElementById('bringModal').classList.add('active');
+            } catch (error) {
+                console.error('❌ Error abriendo modal Bring:', error);
             }
         }
 

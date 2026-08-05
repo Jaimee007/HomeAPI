@@ -44,6 +44,60 @@ def _upsert_meal_ingredient(cur, meal_id: int, ingredient_id: int, spec: Optiona
         )
 
 
+def _entry_get(entry: Any, key: str, default: Any = None) -> Any:
+    if isinstance(entry, dict):
+        return entry.get(key, default)
+    return getattr(entry, key, default)
+
+
+def _normalize_steps(steps: List[Any]) -> List[str]:
+    normalized_steps: List[str] = []
+    for step in steps or []:
+        text = _entry_get(step, 'texto') if not isinstance(step, str) else step
+        if text is None:
+            continue
+        value = str(text).strip()
+        if value:
+            normalized_steps.append(value)
+    return normalized_steps
+
+
+def _replace_meal_steps(cur, meal_id: int, steps: List[str]):
+    cur.execute('DELETE FROM meal_steps WHERE meal_id = ?', (meal_id,))
+    for index, text in enumerate(steps, start=1):
+        cur.execute(
+            'INSERT INTO meal_steps (meal_id, step_order, texto) VALUES (?, ?, ?)',
+            (meal_id, index, text)
+        )
+
+
+def _validate_category_ids(cur, category_ids: List[int]):
+    if not category_ids:
+        return
+    placeholders = ','.join('?' for _ in category_ids)
+    cur.execute(f'SELECT id FROM categories WHERE id IN ({placeholders})', category_ids)
+    existing_ids = {row['id'] for row in cur.fetchall()}
+    missing = sorted(set(category_ids) - existing_ids)
+    if missing:
+        raise ValueError(f'Categorías inexistentes: {missing}')
+
+
+def _validate_ingredient_entries(cur, ingredient_entries: List[Dict[str, Any]]):
+    ingredient_ids = [
+        _entry_get(entry, 'ingredient_id')
+        for entry in ingredient_entries
+        if _entry_get(entry, 'ingredient_id')
+    ]
+    if not ingredient_ids:
+        return
+    placeholders = ','.join('?' for _ in ingredient_ids)
+    cur.execute(f'SELECT id FROM ingredients WHERE id IN ({placeholders})', ingredient_ids)
+    existing_ids = {row['id'] for row in cur.fetchall()}
+    missing = sorted(set(ingredient_ids) - existing_ids)
+    if missing:
+        raise ValueError(f'Ingredientes inexistentes: {missing}')
+
+
 # ==================== CATEGORÍAS ====================
 def crear_categoria(nombre: str) -> Dict[str, Any]:
     with get_conn() as conn:
@@ -172,12 +226,22 @@ def _attach_meal_details(cur, meal: Dict[str, Any]) -> Dict[str, Any]:
         ORDER BY i.nombre
     ''', (meal['id'],))
     meal['ingredients'] = [dict(row) for row in cur.fetchall()]
+
+    cur.execute('''
+        SELECT step_order AS orden, texto
+        FROM meal_steps
+        WHERE meal_id = ?
+        ORDER BY step_order
+    ''', (meal['id'],))
+    meal['steps'] = [dict(row) for row in cur.fetchall()]
     return meal
 
 
-def crear_comida(nombre: str, category_ids: List[int], ingredient_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+def crear_comida(nombre: str, category_ids: List[int], ingredient_entries: List[Dict[str, Any]], steps: List[Any]) -> Dict[str, Any]:
     with get_conn() as conn:
         cur = conn.cursor()
+        _validate_category_ids(cur, category_ids)
+        _validate_ingredient_entries(cur, ingredient_entries)
         cur.execute(
             'INSERT INTO meals (nombre) VALUES (?)',
             (nombre,)
@@ -193,13 +257,16 @@ def crear_comida(nombre: str, category_ids: List[int], ingredient_entries: List[
 
         ingredient_map: Dict[int, Optional[str]] = {}
         for entry in ingredient_entries:
-            ingredient_id = entry.get('ingredient_id')
+            ingredient_id = _entry_get(entry, 'ingredient_id')
             if not ingredient_id:
                 continue
-            ingredient_map[ingredient_id] = _merge_specs(ingredient_map.get(ingredient_id), entry.get('spec'))
+            ingredient_map[ingredient_id] = _merge_specs(ingredient_map.get(ingredient_id), _entry_get(entry, 'spec'))
 
         for ingredient_id, spec in ingredient_map.items():
             _upsert_meal_ingredient(cur, meal_id, ingredient_id, spec)
+
+        normalized_steps = _normalize_steps(steps)
+        _replace_meal_steps(cur, meal_id, normalized_steps)
 
         conn.commit()
         return obtener_comida(meal_id)
@@ -227,7 +294,7 @@ def obtener_comida(meal_id: int) -> Optional[Dict[str, Any]]:
         return meal
 
 
-def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: Optional[List[int]] = None, ingredient_entries: Optional[List[Dict[str, Any]]] = None) -> Optional[Dict[str, Any]]:
+def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: Optional[List[int]] = None, ingredient_entries: Optional[List[Dict[str, Any]]] = None, steps: Optional[List[Any]] = None) -> Optional[Dict[str, Any]]:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute('SELECT id FROM meals WHERE id = ?', (meal_id,))
@@ -238,6 +305,7 @@ def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: 
             cur.execute('UPDATE meals SET nombre = ? WHERE id = ?', (nombre, meal_id))
 
         if category_ids is not None:
+            _validate_category_ids(cur, category_ids)
             cur.execute('DELETE FROM meal_categories WHERE meal_id = ?', (meal_id,))
             for cat_id in category_ids:
                 cur.execute(
@@ -246,16 +314,21 @@ def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: 
                 )
 
         if ingredient_entries is not None:
+            _validate_ingredient_entries(cur, ingredient_entries)
             cur.execute('DELETE FROM meal_ingredients WHERE meal_id = ?', (meal_id,))
             ingredient_map: Dict[int, Optional[str]] = {}
             for entry in ingredient_entries:
-                ingredient_id = entry.get('ingredient_id')
+                ingredient_id = _entry_get(entry, 'ingredient_id')
                 if not ingredient_id:
                     continue
-                ingredient_map[ingredient_id] = _merge_specs(ingredient_map.get(ingredient_id), entry.get('spec'))
+                ingredient_map[ingredient_id] = _merge_specs(ingredient_map.get(ingredient_id), _entry_get(entry, 'spec'))
 
             for ingredient_id, spec in ingredient_map.items():
                 _upsert_meal_ingredient(cur, meal_id, ingredient_id, spec)
+
+        if steps is not None:
+            normalized_steps = _normalize_steps(steps)
+            _replace_meal_steps(cur, meal_id, normalized_steps)
 
         conn.commit()
         return obtener_comida(meal_id)

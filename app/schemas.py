@@ -34,11 +34,21 @@ class MealIngredientOut(BaseModel):
     spec: Optional[str] = None
 
 
+class MealStepIn(BaseModel):
+    texto: str = Field(..., min_length=1)
+
+
+class MealStepOut(BaseModel):
+    orden: int
+    texto: str
+
+
 # ==================== COMIDAS ====================
 class MealIn(BaseModel):
     nombre: str = Field(..., min_length=1)
     category_ids: List[int] = Field(default_factory=list)
     ingredient_entries: List[MealIngredientIn] = Field(default_factory=list)
+    steps: List[MealStepIn] = Field(default_factory=list)
 
 
 class MealOut(BaseModel):
@@ -46,12 +56,14 @@ class MealOut(BaseModel):
     nombre: str
     categories: List[CategoryOut]
     ingredients: List[MealIngredientOut]
+    steps: List[MealStepOut]
 
 
 class MealUpdate(BaseModel):
     nombre: Optional[str] = None
     category_ids: Optional[List[int]] = None
     ingredient_entries: Optional[List[MealIngredientIn]] = None
+    steps: Optional[List[MealStepIn]] = None
 
 
 # ==================== MENÚ DIARIO ====================
@@ -79,3 +91,24 @@ class DailyMenuOut(BaseModel):
 class DailyMenuUpdate(BaseModel):
     meal_lunch_id: Optional[int] = None
     meal_dinner_id: Optional[int] = None
+
+
+# ==================== BRING ====================
+class BringAddIngredientsIn(BaseModel):
+    meal_ids: List[int] = Field(..., min_length=1)
+    list_uuid: Optional[str] = None
+    bring_email: Optional[str] = None
+    bring_password: Optional[str] = None
+
+
+class BringAddedItemOut(BaseModel):
+    meal_id: int
+    ingredient_id: int
+    name: str
+    spec: Optional[str] = None
+
+
+class BringAddIngredientsOut(BaseModel):
+    added: List[BringAddedItemOut]
+    skipped_duplicates: List[BringAddedItemOut]
+    errors: List[str]

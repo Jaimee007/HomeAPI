@@ -7,9 +7,16 @@ DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "home_menu.db"
 DB_PATH = Path(os.getenv("DB_PATH", DEFAULT_DB))
 
 
+def _create_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON;")
+    return conn
+
+
 def init_database():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
+    conn = _create_connection()
     cur = conn.cursor()
     cur.execute("PRAGMA journal_mode=WAL;")
     cur.execute("PRAGMA synchronous=NORMAL;")
@@ -68,6 +75,18 @@ def init_database():
             UNIQUE(meal_id, ingredient_id)
         )
     ''')
+
+    # Tabla de pasos de receta
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS meal_steps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            meal_id INTEGER NOT NULL,
+            step_order INTEGER NOT NULL,
+            texto TEXT NOT NULL,
+            FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
+            UNIQUE(meal_id, step_order)
+        )
+    ''')
     
     # Tabla de menú diario (asignación de comidas a días)
     cur.execute('''
@@ -105,8 +124,7 @@ def init_database():
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    conn = _create_connection()
     try:
         yield conn
     finally:

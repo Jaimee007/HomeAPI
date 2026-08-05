@@ -5,23 +5,23 @@
         }
 
         :root {
-            --pastel-pink: #FFB3D9;
-            --pastel-blue: #B3D9FF;
-            --pastel-green: #B3FFB3;
-            --pastel-yellow: #FFFFB3;
-            --pastel-purple: #D9B3FF;
-            --pastel-peach: #FFD9B3;
-            --light-gray: #F5F5F5;
-            --dark-gray: #666;
-            --border-color: #E0E0E0;
+            --pastel-pink: #BFEBCB;
+            --pastel-blue: #D7F4DE;
+            --pastel-green: #AEE0B8;
+            --pastel-yellow: #E4F7D8;
+            --pastel-purple: #CFEED6;
+            --pastel-peach: #E8F7E2;
+            --light-gray: #F3FAF1;
+            --dark-gray: #1A1A1A;
+            --border-color: #C7E2CB;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #FFE4F5 0%, #E4F5FF 100%);
+            background: linear-gradient(135deg, #E9F8E9 0%, #DFF3E2 100%);
             min-height: 100vh;
             padding: 20px;
-            color: #333;
+            color: #000;
         }
 
         .container {
@@ -38,7 +38,7 @@
         header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            color: #FF69B4;
+            color: #1F5A2A;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -98,13 +98,13 @@
         }
 
         .day-card.today {
-            border-color: var(--pastel-pink);
-            background: #FFF0F8;
-            box-shadow: 0 4px 12px rgba(255, 179, 217, 0.3);
+            border-color: #72A67D;
+            background: #ECFAEF;
+            box-shadow: 0 4px 12px rgba(114, 166, 125, 0.28);
         }
 
         .day-card.today .day-header {
-            color: #FF69B4;
+            color: #000;
             font-weight: 700;
         }
 
@@ -122,7 +122,7 @@
         }
 
         .today-badge {
-            background: var(--pastel-pink);
+            background: #2F6E39;
             color: #fff;
             font-size: 0.65rem;
             padding: 2px 6px;
@@ -171,8 +171,8 @@
         }
 
         .meal-item:hover {
-            border-color: var(--pastel-pink);
-            background: #FFF5FA;
+            border-color: #7DBA88;
+            background: #F0FAF2;
         }
 
         .meal-item.dragging {
@@ -181,9 +181,9 @@
         }
 
         .meal-item.drag-over {
-            border: 2px dashed var(--pastel-pink);
-            background: #FFF0F8;
-            box-shadow: inset 0 0 8px rgba(255, 179, 217, 0.3);
+            border: 2px dashed #7DBA88;
+            background: #EAF8ED;
+            box-shadow: inset 0 0 8px rgba(125, 186, 136, 0.35);
         }
 
         .meal-info {
@@ -197,7 +197,7 @@
 
         .meal-price {
             font-size: 0.65rem;
-            color: #FF69B4;
+            color: #1F5A2A;
             font-weight: 600;
             margin-left: 0;
             display: none;
@@ -220,7 +220,7 @@
         }
 
         .add-btn:hover {
-            background: #FF69B4;
+            background: #4E9B5D;
             transform: scale(1.1);
         }
 
@@ -257,39 +257,59 @@
             font-size: 0.9rem;
         }
 
+        .sidebar-card .btn-primary,
+        .sidebar-card .btn-secondary {
+            background: #2F6E39;
+            color: #fff;
+            border: none;
+        }
+
+        .sidebar-card .btn-primary:hover,
+        .sidebar-card .btn-secondary:hover {
+            background: #275E31;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(39, 94, 49, 0.35);
+        }
+
+        .quick-action-spaced {
+            margin-top: 10px;
+        }
+
         .btn-primary {
-            background: var(--pastel-pink);
+            background: #2F6E39;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #FF69B4;
+            background: #275E31;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(255, 105, 180, 0.3);
+            box-shadow: 0 4px 8px rgba(39, 94, 49, 0.35);
         }
 
         .btn-secondary {
-            background: var(--pastel-blue);
-            color: white;
+            background: #BFEBCB;
+            color: #000;
+            border: 1px solid #95C6A0;
         }
 
         .btn-secondary:hover {
-            background: #5B9FD9;
+            background: #A9DDB6;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(91, 159, 217, 0.3);
+            box-shadow: 0 4px 8px rgba(65, 122, 79, 0.25);
         }
 
         .btn-success {
-            background: var(--pastel-green);
-            color: #333;
+            background: #AEE0B8;
+            color: #000;
             font-weight: 600;
         }
 
         .btn-success:hover {
-            background: #5FB35F;
-            color: white;
+            background: #8FCCA0;
+            color: #000;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(95, 179, 95, 0.3);
+            box-shadow: 0 4px 8px rgba(72, 130, 85, 0.28);
         }
 
         .modal {
@@ -345,7 +365,7 @@
         }
 
         .close-btn:hover {
-            color: #FF69B4;
+            color: #2F6E39;
         }
 
         .form-group {
@@ -361,6 +381,7 @@
         }
 
         .form-group input,
+        .form-group textarea,
         .form-group select {
             width: 100%;
             padding: 10px;
@@ -370,11 +391,40 @@
             transition: border-color 0.2s ease;
         }
 
+        .form-group textarea {
+            min-height: 90px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
         .form-group input:focus,
+        .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: var(--pastel-pink);
-            background: #FFF5FA;
+            border-color: #7DBA88;
+            background: #F2FBF4;
+        }
+
+        .meal-details-section {
+            margin-top: 12px;
+        }
+
+        .meal-details-section h4 {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .details-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #555;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .details-list li {
+            margin-bottom: 5px;
         }
 
         .checkbox-group {
@@ -484,7 +534,7 @@
         }
 
         .btn-filter-apply {
-            background: var(--pastel-blue);
+            background: #2F6E39;
             color: white;
         }
 
@@ -523,9 +573,9 @@
         }
 
         .meal-view-btn.active {
-            background: var(--pastel-pink);
+            background: #2F6E39;
             color: white;
-            border-color: var(--pastel-pink);
+            border-color: #2F6E39;
         }
 
         .favorite-btn {
@@ -546,8 +596,8 @@
         .btn-add-temp-from-search {
             margin-top: 12px;
             padding: 10px 12px;
-            background: var(--pastel-purple);
-            color: white;
+            background: #AEE0B8;
+            color: #000;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -556,7 +606,7 @@
         }
 
         .btn-add-temp-from-search:hover {
-            background: #C994FF;
+            background: #8FCCA0;
         }
 
         .history-card {
@@ -607,8 +657,8 @@
         }
 
         .history-toggle-btn:hover {
-            border-color: var(--pastel-pink);
-            color: #444;
+            border-color: #7DBA88;
+            color: #000;
         }
 
         .meal-item.empty {
@@ -625,14 +675,14 @@
 
         .filter-trigger:focus {
             outline: none;
-            border-color: var(--pastel-pink);
+            border-color: #7DBA88;
         }
 
         .clear-filters {
             width: 40px;
             min-width: 40px;
             height: 40px;
-            background: var(--pastel-yellow);
+            background: #D9F2D0;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -646,7 +696,7 @@
         }
 
         .clear-filters:hover {
-            background: #FFD700;
+            background: #BFE8B4;
         }
 
         .no-results {
@@ -691,7 +741,7 @@
         }
 
         .temp-badge {
-            background: var(--pastel-purple);
+            background: #2F6E39;
             color: white;
             padding: 2px 6px;
             border-radius: 8px;
@@ -710,7 +760,7 @@
         }
 
         .meal-card-temp-badge {
-            background: var(--pastel-purple);
+            background: #2F6E39;
             color: white;
             padding: 2px 6px;
             border-radius: 999px;
@@ -722,13 +772,64 @@
 
         .item-price {
             font-size: 0.8rem;
-            color: #FF69B4;
+            color: #1F5A2A;
             font-weight: 500;
         }
 
         .item-actions {
             display: flex;
             gap: 8px;
+        }
+
+        .bring-panel {
+            background: linear-gradient(135deg, #ECFAEF 0%, #E2F5E6 100%);
+            border: 1px solid #C7E2CB;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .bring-selection {
+            font-size: 0.82rem;
+            color: #516071;
+            margin: 0;
+            padding-right: 44px;
+        }
+
+        .bring-lock-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            border: 1px solid #8FBF99;
+            background: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #1F5A2A;
+        }
+
+        .bring-lock-btn:hover {
+            background: #E8F6EC;
+            border-color: #75A880;
+        }
+
+        .bring-add-btn {
+            width: 170px;
+            min-height: 88px;
+            margin: 0 auto 15px;
+            display: block;
+            border-radius: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+            text-align: center;
+            white-space: normal;
+            padding: 12px;
         }
 
         .btn-small {
@@ -741,21 +842,21 @@
         }
 
         .btn-edit {
-            background: var(--pastel-yellow);
-            color: #555;
+            background: #DDF2D5;
+            color: #000;
         }
 
         .btn-edit:hover {
-            background: #FFD700;
+            background: #C5E8BB;
         }
 
         .btn-delete {
-            background: #FFB3B3;
+            background: #2F6E39;
             color: white;
         }
 
         .btn-delete:hover {
-            background: #FF6B6B;
+            background: #275E31;
         }
 
         .modal-buttons {
@@ -776,18 +877,18 @@
         }
 
         .btn-cancel {
-            background: var(--light-gray);
-            color: #555;
+            background: #E8F5E4;
+            color: #000;
         }
 
         .btn-cancel:hover {
-            background: #ddd;
+            background: #D5EECF;
         }
 
         .btn-remove-meal {
             background: white;
-            border: 1px solid #FFB3B3;
-            color: #FF6B6B;
+            border: 1px solid #6AA676;
+            color: #1F5A2A;
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 0.8rem;
@@ -798,8 +899,59 @@
         }
 
         .btn-remove-meal:hover {
-            background: #FFB3B3;
+            background: #2F6E39;
             color: white;
+        }
+
+        .success,
+        .error {
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            margin: 8px 0 12px;
+        }
+
+        .success {
+            background: #ECFAEF;
+            border: 1px solid #B5DDBE;
+            color: #000;
+        }
+
+        .error {
+            background: #F0F8EC;
+            border: 1px solid #C7E2CB;
+            color: #000;
+        }
+
+        header,
+        header h1,
+        header p,
+        .week-title,
+        .week-title span,
+        .day-header,
+        .meal-label,
+        .meal-info,
+        .sidebar-card h3,
+        .modal-header,
+        .form-group label,
+        .meal-details-section h4,
+        .details-list,
+        .filter-popup-title,
+        .filter-selected-count,
+        .meal-view-btn,
+        .history-item,
+        .history-item-time,
+        .history-toggle-btn,
+        .no-results,
+        .item-name,
+        .item-price,
+        .bring-selection,
+        .close-btn,
+        .btn-success,
+        .btn-secondary,
+        .btn-cancel,
+        .btn-edit {
+            color: #000;
         }
 
         @media (max-width: 768px) {

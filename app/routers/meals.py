@@ -15,7 +15,10 @@ def listar_comidas():
 @router.post("/", response_model=MealOut, status_code=status.HTTP_201_CREATED)
 def crear_comida(payload: MealIn):
     """Crear una nueva comida"""
-    return crud.crear_comida(payload.nombre, payload.category_ids, payload.ingredient_entries)
+    try:
+        return crud.crear_comida(payload.nombre, payload.category_ids, payload.ingredient_entries, payload.steps)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{meal_id}", response_model=MealOut)
@@ -30,7 +33,10 @@ def obtener_comida(meal_id: int):
 @router.put("/{meal_id}", response_model=MealOut)
 def actualizar_comida(meal_id: int, payload: MealUpdate):
     """Actualizar una comida"""
-    meal = crud.actualizar_comida(meal_id, payload.nombre, payload.category_ids, payload.ingredient_entries)
+    try:
+        meal = crud.actualizar_comida(meal_id, payload.nombre, payload.category_ids, payload.ingredient_entries, payload.steps)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not meal:
         raise HTTPException(status_code=404, detail="Comida no encontrada")
     return meal

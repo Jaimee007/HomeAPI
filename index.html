@@ -21,10 +21,10 @@
             <div class="sidebar">
                 <div class="sidebar-card">
                     <h3>➕ Acciones Rápidas</h3>
-                    <button class="btn-primary" onclick="openManageMealsModal()">📖 Recetas</button>
-                    <button class="btn-secondary" onclick="openManageIngredientsModal()" style="margin-top: 10px;">🥕 Ingredientes</button>
-                    <button class="btn-secondary" onclick="openManageCategoriesModal()" style="margin-top: 10px;">⚙️ Categorías</button>
-                    <button class="btn-primary" onclick="openManageMealsModal()" style="margin-top: 10px;">🛒 Añadir ingredientes a la compra</button>
+                    <button class="btn-primary" onclick="openManageMealsModal('all')">📖 Recetas</button>
+                    <button class="btn-secondary quick-action-spaced" onclick="openManageIngredientsModal()">🥕 Ingredientes</button>
+                    <button class="btn-secondary quick-action-spaced" onclick="openManageCategoriesModal()">⚙️ Categorías</button>
+                    <button class="btn-primary quick-action-spaced" onclick="openBringModal()">🛒 Generar lista Bring!</button>
                 </div>
 
                 <div class="sidebar-card">
@@ -57,6 +57,11 @@
             
             <!-- Búsqueda y Filtros -->
             <div class="search-filter-section">
+                <div class="meal-view-toggle">
+                    <button type="button" id="viewAllBtn" class="meal-view-btn active" onclick="app.setMealView('all')" title="Todas">📋</button>
+                    <button type="button" id="viewFavoritesBtn" class="meal-view-btn" onclick="app.setMealView('favorites')" title="Favoritas">⭐</button>
+                    <button type="button" id="viewRecentBtn" class="meal-view-btn" onclick="app.setMealView('recent')" title="Recientes">🕒</button>
+                </div>
                 <input type="text" id="mealSearchInput" class="search-input" placeholder="🔍 Buscar receta..." onkeyup="app.filterMeals()">
                 <div class="filter-group">
                     <button type="button" id="openCategoryFilterBtn" class="filter-trigger" onclick="app.toggleCategoryFilterPopup()">📂 Filtrar por categorías</button>
@@ -77,6 +82,7 @@
             <div id="mealsSelectList" class="items-list"></div>
             <div id="noResultsMessage" class="no-results" style="display: none;">
                 <div id="noResultsText">❌ No se encontraron recetas</div>
+                <button type="button" id="addTempFromSearchBtn" class="btn-add-temp-from-search" onclick="app.assignSearchAsTempRecipe()" style="display: none;">Añadir receta temporal</button>
             </div>
             
             <div class="modal-buttons">
@@ -106,6 +112,10 @@
                     <label>Ingredientes</label>
                     <div id="ingredientsCheckboxes" class="checkbox-group"></div>
                 </div>
+                <div class="form-group">
+                    <label for="mealSteps">Pasos (uno por línea)</label>
+                    <textarea id="mealSteps" placeholder="Ej:\nSofríe la cebolla\nAñade parmesano\nSirve caliente"></textarea>
+                </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-cancel" onclick="closeModal('addMealModal')">Cancelar</button>
                     <button type="submit" class="btn-primary" style="width: 100%;">Crear Receta</button>
@@ -123,7 +133,7 @@
             </div>
             <div id="mealsMessage"></div>
             
-            <h3 style="margin-top: 20px; margin-bottom: 10px; color: #555; font-size: 1rem;">Nueva Receta</h3>
+            <h3 id="manageMealFormTitle" style="margin-top: 20px; margin-bottom: 10px; color: #555; font-size: 1rem;">Nueva Receta</h3>
             <form id="addMealForm2">
                 <div class="form-group">
                     <input type="text" id="mealName2" required placeholder="Nombre de la receta">
@@ -136,12 +146,55 @@
                     <label>Ingredientes</label>
                     <div id="ingredientsCheckboxes2" class="checkbox-group"></div>
                 </div>
-                <button type="submit" class="btn-success" style="width: 100%; margin-bottom: 20px;">Agregar Receta</button>
+                <div class="form-group">
+                    <label for="mealSteps2">Pasos (uno por línea)</label>
+                    <textarea id="mealSteps2" placeholder="Ej:\nSofríe la cebolla\nAñade parmesano\nSirve caliente"></textarea>
+                </div>
+                <button id="manageMealSubmitBtn" type="submit" class="btn-success" style="width: 100%; margin-bottom: 10px;">Agregar Receta</button>
+                <button id="manageMealCancelEditBtn" type="button" class="btn-cancel" style="width: 100%; margin-bottom: 20px; display: none;" onclick="app.cancelMealEdit()">Cancelar edición</button>
             </form>
 
             <h3 style="margin-bottom: 10px; color: #555; font-size: 1rem;">Recetas Existentes</h3>
-            <button type="button" class="btn-secondary" onclick="app.addSelectedRecipeIngredientsToBring()" style="width: 100%; margin-bottom: 15px;">➕ Añadir ingredientes seleccionados a Bring</button>
             <div id="mealsList" class="items-list"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Generar Lista Bring -->
+    <div id="bringModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Generar Lista Bring!</span>
+                <button class="close-btn" onclick="closeModal('bringModal')">×</button>
+            </div>
+            <div class="bring-panel">
+                <button type="button" class="bring-lock-btn" onclick="app.configureBringSettings()" title="Configurar cuenta Bring" aria-label="Configurar cuenta Bring">🔐</button>
+                <p id="bringSelectionInfo" class="bring-selection">No hay recetas seleccionadas para Bring!</p>
+            </div>
+            <button type="button" class="btn-secondary bring-add-btn" onclick="app.addSelectedRecipeIngredientsToBring()">➕ Añadir ingredientes seleccionados a Bring</button>
+            <div id="bringMessage"></div>
+            <h3 style="margin-bottom: 10px; color: #555; font-size: 1rem;">Recetas planificadas</h3>
+            <div id="bringMealsList" class="items-list"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalle de Receta -->
+    <div id="mealDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="mealDetailsTitle">Detalle de Receta</span>
+                <button class="close-btn" onclick="closeModal('mealDetailsModal')">×</button>
+            </div>
+            <div class="meal-details-section">
+                <h4>Ingredientes</h4>
+                <ul id="mealDetailsIngredients" class="details-list"></ul>
+            </div>
+            <div class="meal-details-section">
+                <h4>Pasos</h4>
+                <ol id="mealDetailsSteps" class="details-list details-steps"></ol>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('mealDetailsModal')">Cerrar</button>
+            </div>
         </div>
     </div>
 
