@@ -4,8 +4,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import os
 
+from . import calendar_sync
 from .db import init_database
-from .routers import categories, meals, daily_menu, ingredients, bring
+from .routers import categories, meals, daily_menu, ingredients, bring, calendar
 
 # Inicializar base de datos
 init_database()
@@ -64,6 +65,18 @@ app.include_router(meals.router)
 app.include_router(ingredients.router)
 app.include_router(bring.router)
 app.include_router(daily_menu.router)
+app.include_router(calendar.router)
+
+
+@app.on_event("startup")
+def iniciar_sincronizacion_calendario():
+    """Arranca el worker que publica el menú en Google Calendar (si está activo)"""
+    calendar_sync.start_worker()
+
+
+@app.on_event("shutdown")
+def detener_sincronizacion_calendario():
+    calendar_sync.stop_worker()
 
 
 @app.get("/", tags=["root"])

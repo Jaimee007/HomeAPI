@@ -1,6 +1,7 @@
 from .db import get_conn
+from . import calendar_config
 import sqlite3
-from typing import List, Optional, Dict, Any
+from typing import Iterable, List, Optional, Dict, Any, Tuple
 
 
 def _normalize_spec(spec: Optional[str]) -> Optional[str]:
@@ -98,6 +99,61 @@ def _validate_ingredient_entries(cur, ingredient_entries: List[Dict[str, Any]]):
         raise ValueError(f'Ingredientes inexistentes: {missing}')
 
 
+# ==================== COLA DE CALENDARIO ====================
+# Un "slot" es la tupla (mes, año, dia, franja) que identifica un evento.
+Slot = Tuple[int, int, int, str]
+
+
+def _enqueue_slots(cur, slots: Iterable[Slot]):
+    """Mark slots as dirty so the calendar worker republishes them.
+
+    Enqueued inside the caller's transaction: if the DB change rolls back, the
+    queue entry goes with it. Re-queuing a slot that already failed resets its
+    backoff so a fresh edit is retried immediately.
+    """
+    if not calendar_config.is_enabled():
+        return
+    for mes, año, dia, slot in {tuple(s) for s in slots}:
+        cur.execute('''
+            INSERT INTO calendar_sync_queue (mes, año, dia, slot)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(mes, año, dia, slot) DO UPDATE SET
+                attempts = 0,
+                last_error = NULL,
+                next_attempt_at = CURRENT_TIMESTAMP
+        ''', (mes, año, dia, slot))
+
+
+def _slots_of_daily_menu(cur, daily_menu_id: int) -> List[Slot]:
+    cur.execute('SELECT mes, año, dia FROM daily_menu WHERE id = ?', (daily_menu_id,))
+    row = cur.fetchone()
+    if not row:
+        return []
+    return [(row['mes'], row['año'], row['dia'], slot) for slot in calendar_config.SLOTS]
+
+
+def _slots_using_meal(cur, meal_id: int) -> List[Slot]:
+    """Every slot whose event content depends on this meal.
+
+    Needed because a meal is referenced from many days: renaming it, or
+    deleting it (the FK is ON DELETE SET NULL), changes all of their events.
+    """
+    slots: List[Slot] = []
+    for slot, column in calendar_config.SLOT_MEAL_COLUMN.items():
+        cur.execute(f'SELECT mes, año, dia FROM daily_menu WHERE {column} = ?', (meal_id,))
+        slots.extend((row['mes'], row['año'], row['dia'], slot) for row in cur.fetchall())
+    return slots
+
+
+def _slots_using_ingredient(cur, ingredient_id: int) -> List[Slot]:
+    """Slots affected by an ingredient change, via the meals that use it."""
+    cur.execute('SELECT meal_id FROM meal_ingredients WHERE ingredient_id = ?', (ingredient_id,))
+    slots: List[Slot] = []
+    for row in cur.fetchall():
+        slots.extend(_slots_using_meal(cur, row['meal_id']))
+    return slots
+
+
 # ==================== CATEGORÍAS ====================
 def crear_categoria(nombre: str) -> Dict[str, Any]:
     with get_conn() as conn:
@@ -193,6 +249,7 @@ def actualizar_ingrediente(ingredient_id: int, nombre: str) -> Optional[Dict[str
             return None
         try:
             cur.execute('UPDATE ingredients SET nombre = ? WHERE id = ?', (nombre, ingredient_id))
+            _enqueue_slots(cur, _slots_using_ingredient(cur, ingredient_id))
             conn.commit()
             return obtener_ingrediente(ingredient_id)
         except sqlite3.IntegrityError:
@@ -202,9 +259,14 @@ def actualizar_ingrediente(ingredient_id: int, nombre: str) -> Optional[Dict[str
 def eliminar_ingrediente(ingredient_id: int) -> bool:
     with get_conn() as conn:
         cur = conn.cursor()
+        # Collect the affected slots first: the cascade wipes meal_ingredients.
+        slots = _slots_using_ingredient(cur, ingredient_id)
         cur.execute('DELETE FROM ingredients WHERE id = ?', (ingredient_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            _enqueue_slots(cur, slots)
         conn.commit()
-        return cur.rowcount > 0
+        return deleted
 
 
 # ==================== COMIDAS ====================
@@ -330,6 +392,7 @@ def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: 
             normalized_steps = _normalize_steps(steps)
             _replace_meal_steps(cur, meal_id, normalized_steps)
 
+        _enqueue_slots(cur, _slots_using_meal(cur, meal_id))
         conn.commit()
         return obtener_comida(meal_id)
 
@@ -337,9 +400,16 @@ def actualizar_comida(meal_id: int, nombre: Optional[str] = None, category_ids: 
 def eliminar_comida(meal_id: int) -> bool:
     with get_conn() as conn:
         cur = conn.cursor()
+        # Collect the affected slots before deleting: the FK is ON DELETE SET
+        # NULL, so afterwards those days no longer reference this meal and the
+        # events would be left orphaned in the calendar.
+        slots = _slots_using_meal(cur, meal_id)
         cur.execute('DELETE FROM meals WHERE id = ?', (meal_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            _enqueue_slots(cur, slots)
         conn.commit()
-        return cur.rowcount > 0
+        return deleted
 
 
 def obtener_comidas_por_categoria(category_id: int) -> List[Dict[str, Any]]:
@@ -367,8 +437,10 @@ def crear_dia_menu(mes: int, año: int, dia: int, meal_lunch_id: Optional[int], 
                 INSERT INTO daily_menu (mes, año, dia, meal_lunch_id, meal_dinner_id)
                 VALUES (?, ?, ?, ?, ?)
             ''', (mes, año, dia, meal_lunch_id, meal_dinner_id))
+            daily_menu_id = cur.lastrowid
+            _enqueue_slots(cur, [(mes, año, dia, slot) for slot in calendar_config.SLOTS])
             conn.commit()
-            return obtener_dia_menu(cur.lastrowid)
+            return obtener_dia_menu(daily_menu_id)
         except sqlite3.IntegrityError:
             raise ValueError(f"Ya existe un menú para {dia}/{mes}/{año}")
 
@@ -429,11 +501,12 @@ def actualizar_dia_menu(daily_menu_id: int, meal_lunch_id: Optional[int] = None,
             return None
         
         # Actualizar ambos campos en una sola query, permitiendo valores null
-        cur.execute('''UPDATE daily_menu 
-                     SET meal_lunch_id = ?, meal_dinner_id = ?, updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = ?''', 
+        cur.execute('''UPDATE daily_menu
+                     SET meal_lunch_id = ?, meal_dinner_id = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?''',
                    (meal_lunch_id, meal_dinner_id, daily_menu_id))
-        
+
+        _enqueue_slots(cur, _slots_of_daily_menu(cur, daily_menu_id))
         conn.commit()
         return obtener_dia_menu(daily_menu_id)
 
@@ -441,6 +514,11 @@ def actualizar_dia_menu(daily_menu_id: int, meal_lunch_id: Optional[int] = None,
 def eliminar_dia_menu(daily_menu_id: int) -> bool:
     with get_conn() as conn:
         cur = conn.cursor()
+        # Read the date before deleting the row it lives on.
+        slots = _slots_of_daily_menu(cur, daily_menu_id)
         cur.execute('DELETE FROM daily_menu WHERE id = ?', (daily_menu_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            _enqueue_slots(cur, slots)
         conn.commit()
-        return cur.rowcount > 0
+        return deleted

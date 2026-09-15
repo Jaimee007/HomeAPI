@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 
@@ -112,3 +112,27 @@ class BringAddIngredientsOut(BaseModel):
     added: List[BringAddedItemOut]
     skipped_duplicates: List[BringAddedItemOut]
     errors: List[str]
+
+
+# ==================== GOOGLE CALENDAR ====================
+class CalendarFailureOut(BaseModel):
+    mes: int
+    año: int
+    dia: int
+    slot: str
+    attempts: int
+    last_error: Optional[str] = None
+
+
+class CalendarStatusOut(BaseModel):
+    enabled: bool
+    calendar_id: Optional[str] = None
+    pending: int
+    published_events: int
+    recent_failures: List[CalendarFailureOut]
+
+
+class CalendarSyncOut(BaseModel):
+    queued: int
+    results: Dict[str, int]
+    pending: int

@@ -13,6 +13,7 @@ API FastAPI para la gestión de comidas, cenas y menú semanal con autenticació
 - ✅ Soporte para menús del mes actual y siguiente
 - ✅ Base de datos SQLite
 - ✅ Docker y docker-compose incluido
+- ✅ Publicación del menú en Google Calendar (ver [GOOGLE_CALENDAR_SETUP.md](GOOGLE_CALENDAR_SETUP.md))
 
 ## Instalación y Uso
 
@@ -134,6 +135,19 @@ curl -X GET http://localhost:8000/meals/category/1 \
 
 - `DB_PATH`: Ruta de la base de datos SQLite (por defecto: `/app/data/home_menu.db`)
 - `API_KEY`: Clave de autenticación (por defecto: `homeapi_default_key_2024`)
+- `GOOGLE_CALENDAR_ENABLED` / `GOOGLE_CALENDAR_ID` y demás ajustes del calendario:
+  ver [GOOGLE_CALENDAR_SETUP.md](GOOGLE_CALENDAR_SETUP.md)
+
+## Google Calendar
+
+Cada comida y cena asignada se publica como evento en un calendario secundario (14:00 y 21:00 por
+defecto), y cualquier cambio en la base de datos se refleja automáticamente. La sincronización es
+unidireccional: la base de datos manda.
+
+- `GET /calendar/status` - Estado de la integración y trabajo pendiente
+- `POST /calendar/sync?mes=3&año=2026` - Reconciliar un mes completo (backfill inicial)
+
+Instrucciones completas de configuración en [GOOGLE_CALENDAR_SETUP.md](GOOGLE_CALENDAR_SETUP.md).
 
 ## Estructura de la Base de Datos
 

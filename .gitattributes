@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings even when checked out on Windows: the
+# container runs entrypoint.sh, and a CRLF shebang makes Linux look for an
+# interpreter literally named "bash\r".
+*.sh text eol=lf
+entrypoint.sh text eol=lf

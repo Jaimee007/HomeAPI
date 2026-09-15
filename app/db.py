@@ -105,6 +105,41 @@ def init_database():
         )
     ''')
     
+    # Tabla de eventos publicados en Google Calendar.
+    # Se indexa por fecha + franja (no por daily_menu_id) para que el mapeo
+    # sobreviva al borrado y recreacion de la fila de daily_menu.
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS calendar_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mes INTEGER NOT NULL,
+            año INTEGER NOT NULL,
+            dia INTEGER NOT NULL,
+            slot TEXT NOT NULL,
+            google_event_id TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mes, año, dia, slot)
+        )
+    ''')
+
+    # Cola de sincronizacion (outbox). Cada fila dice "esta fecha/franja esta
+    # sucia", no que operacion hacer: el worker relee el estado actual y decide
+    # crear, actualizar o borrar. Asi es idempotente y se puede reintentar.
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS calendar_sync_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mes INTEGER NOT NULL,
+            año INTEGER NOT NULL,
+            dia INTEGER NOT NULL,
+            slot TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            next_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mes, año, dia, slot)
+        )
+    ''')
+
     # Insertar categorías predefinidas
     cur.execute('SELECT COUNT(*) FROM categories')
     if cur.fetchone()[0] == 0:

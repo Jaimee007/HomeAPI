@@ -7,8 +7,17 @@ services:
       - DB_PATH=/data/home_menu.db
       - API_KEY=homeapi_default_key_2024
       - PYTHONUNBUFFERED=1
+      # Google Calendar: pon GOOGLE_CALENDAR_ENABLED=1 y el id del calendario
+      # secundario para activar la publicacion del menu.
+      - GOOGLE_CALENDAR_ENABLED=${GOOGLE_CALENDAR_ENABLED:-0}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID:-}
+      - GOOGLE_SERVICE_ACCOUNT_FILE=/secrets/google-service-account.json
+      - CALENDAR_TIMEZONE=Europe/Madrid
+      - CALENDAR_LUNCH_TIME=14:00
+      - CALENDAR_DINNER_TIME=21:00
     volumes:
       - ./data:/data
+      - ./secrets:/secrets:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]

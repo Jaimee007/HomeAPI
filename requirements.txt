@@ -3,3 +3,5 @@ uvicorn[standard]
 pydantic
 python-bring-api
 aiohttp
+google-api-python-client
+google-auth
