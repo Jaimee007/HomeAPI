@@ -18,6 +18,7 @@ const getApiBaseUrl = () => {
             constructor() {
                 this.meals = [];
                 this.categories = [];
+                this.ingredients = [];
                 this.dailyMenus = {};
                 this.tempRecipes = [];
                 this.currentDate = new Date();
@@ -28,6 +29,12 @@ const getApiBaseUrl = () => {
                 this.selectedCategoryIds = [];
                 this.pendingCategoryIds = [];
                 this.currentMealView = 'all';
+                this.manageMealsMode = 'all';
+                this.editingMealId = null;
+                this.selectedIngredientsForm1 = new Map();
+                this.selectedIngredientsForm2 = new Map();
+                this.selectedMealsForBring = [];
+                this.bringSettings = this.loadBringSettings();
                 this.favoriteMealIds = this.loadStoredIds('homeapi_favorite_meals');
                 this.recentMealIds = this.loadStoredIds('homeapi_recent_meals');
                 this.historyStack = [];
@@ -51,6 +58,72 @@ const getApiBaseUrl = () => {
 
             storeIds(key, ids) {
                 localStorage.setItem(key, JSON.stringify(ids));
+            }
+
+            loadBringSettings() {
+                try {
+                    const raw = localStorage.getItem('homeapi_bring_settings');
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    return {
+                        bring_email: typeof parsed.bring_email === 'string' ? parsed.bring_email : '',
+                        bring_password: typeof parsed.bring_password === 'string' ? parsed.bring_password : ''
+                    };
+                } catch (e) {
+                    return { bring_email: '', bring_password: '' };
+                }
+            }
+
+            saveBringSettings() {
+                localStorage.setItem('homeapi_bring_settings', JSON.stringify(this.bringSettings));
+            }
+
+            configureBringSettings() {
+                const email = prompt('Correo de Bring!', this.bringSettings.bring_email || '');
+                if (email === null) return false;
+
+                const password = prompt('Contraseña de Bring! (se guarda en este dispositivo)', this.bringSettings.bring_password || '');
+                if (password === null) return false;
+
+                this.bringSettings = {
+                    bring_email: email.trim(),
+                    bring_password: password
+                };
+
+                this.saveBringSettings();
+                this.showMessage('bringMessage', 'Configuración de Bring guardada en este dispositivo', 'success');
+                return true;
+            }
+
+            getBringPayloadSettings() {
+                const payload = {};
+                const email = (this.bringSettings.bring_email || '').trim();
+                const password = this.bringSettings.bring_password || '';
+
+                if (email) payload.bring_email = email;
+                if (password) payload.bring_password = password;
+                return payload;
+            }
+
+            shouldPromptBringSettings(detail) {
+                if (!detail) return false;
+                const text = String(detail).toLowerCase();
+                return text.includes('credentials') || text.includes('uuid') || text.includes('login failed');
+            }
+
+            async postBringIngredients(mealIds) {
+                const payload = {
+                    meal_ids: mealIds,
+                    ...this.getBringPayloadSettings()
+                };
+
+                const response = await fetch(`${API_BASE_URL}/bring/add-recipe-ingredients`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                return { response, result };
             }
 
             async init() {
@@ -264,12 +337,16 @@ const getApiBaseUrl = () => {
 
             async loadData() {
                 try {
-                    const mealsRes = await fetch(`${API_BASE_URL}/meals`, { headers: { 'X-API-Key': API_KEY } });
-                    const categoriesRes = await fetch(`${API_BASE_URL}/categories`, { headers: { 'X-API-Key': API_KEY } });
-                    const menusRes = await fetch(`${API_BASE_URL}/daily-menu`, { headers: { 'X-API-Key': API_KEY } });
+                    const mealsRes = await fetch(`${API_BASE_URL}/meals/`, { headers: { 'X-API-Key': API_KEY } });
+                    const categoriesRes = await fetch(`${API_BASE_URL}/categories/`, { headers: { 'X-API-Key': API_KEY } });
+                    const ingredientsRes = await fetch(`${API_BASE_URL}/ingredients/`, { headers: { 'X-API-Key': API_KEY } });
+                    const menusRes = await fetch(`${API_BASE_URL}/daily-menu/`, { headers: { 'X-API-Key': API_KEY } });
 
                     this.meals = await mealsRes.json();
                     this.categories = await categoriesRes.json();
+                    this.ingredients = await ingredientsRes.json();
+                    const mealIds = new Set(this.meals.map(m => m.id));
+                    this.selectedMealsForBring = this.selectedMealsForBring.filter(id => mealIds.has(id));
                     
                     let menus = [];
                     if (menusRes.ok) {
@@ -285,6 +362,7 @@ const getApiBaseUrl = () => {
                     }
 
                     this.updateSummary();
+                    this.updateBringSelectionInfo();
                 } catch (error) {
                     console.error('❌ Error cargando datos:', error);
                 }
@@ -336,7 +414,7 @@ const getApiBaseUrl = () => {
 
                 const lunch = menu?.meal_lunch;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'lunch')">
+                    <div class="meal-item ${lunch ? 'filled' : 'empty'}" draggable="${lunch ? 'true' : 'false'}" data-date="${key}" data-type="lunch" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.handleMealSlotClick('${key}', 'lunch')">
                         ${lunch ? `
                             <div class="meal-info">
                                 <span class="meal-name">${lunch.nombre}</span>
@@ -349,7 +427,7 @@ const getApiBaseUrl = () => {
 
                 const dinner = menu?.meal_dinner;
                 html += `<div class="meal-slot">
-                    <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.selectMeal(this, '${key}', 'dinner')">
+                    <div class="meal-item ${dinner ? 'filled' : 'empty'}" draggable="${dinner ? 'true' : 'false'}" data-date="${key}" data-type="dinner" ondragstart="app.handleDragStart(event)" ondragend="app.handleDragEnd(event)" ondragover="app.handleDragOver(event)" ondragleave="app.handleDragLeave(event)" ondrop="app.handleDrop(event)" onclick="app.handleMealSlotClick('${key}', 'dinner')">
                         ${dinner ? `
                             <div class="meal-info">
                                 <span class="meal-name">${dinner.nombre}</span>
@@ -363,6 +441,61 @@ const getApiBaseUrl = () => {
                 html += '</div>';
                 dayCard.innerHTML = html;
                 return dayCard;
+            }
+
+            handleMealSlotClick(dateKey, type) {
+                const menu = this.dailyMenus[dateKey];
+                const meal = type === 'lunch' ? menu?.meal_lunch : menu?.meal_dinner;
+
+                if (!meal) {
+                    this.selectedDay = dateKey;
+                    this.selectedMealType = type;
+                    this.openSelectMealModal();
+                    return;
+                }
+
+                this.showMealDetails(meal);
+            }
+
+            showMealDetails(meal) {
+                const title = document.getElementById('mealDetailsTitle');
+                const ingredientsList = document.getElementById('mealDetailsIngredients');
+                const stepsList = document.getElementById('mealDetailsSteps');
+
+                if (!title || !ingredientsList || !stepsList) return;
+
+                title.textContent = meal.nombre || 'Detalle de Receta';
+
+                ingredientsList.innerHTML = '';
+                const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+                if (ingredients.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Sin ingredientes definidos';
+                    ingredientsList.appendChild(li);
+                } else {
+                    ingredients.forEach(ingredient => {
+                        const li = document.createElement('li');
+                        const spec = ingredient.spec ? ` (${ingredient.spec})` : '';
+                        li.textContent = `${ingredient.nombre}${spec}`;
+                        ingredientsList.appendChild(li);
+                    });
+                }
+
+                stepsList.innerHTML = '';
+                const steps = Array.isArray(meal.steps) ? meal.steps : [];
+                if (steps.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Sin pasos definidos';
+                    stepsList.appendChild(li);
+                } else {
+                    steps.forEach(step => {
+                        const li = document.createElement('li');
+                        li.textContent = step.texto || '';
+                        stepsList.appendChild(li);
+                    });
+                }
+
+                document.getElementById('mealDetailsModal').classList.add('active');
             }
 
             isToday(date) {
@@ -474,8 +607,7 @@ const getApiBaseUrl = () => {
                 filteredMeals.forEach(meal => {
                     const item = document.createElement('div');
                     item.className = 'item';
-                    const isFav = this.favoriteMealIds.includes(meal.id);
-                    item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div><div class="item-price">' + (meal.precio || 0).toFixed(2) + '€</div></div><button class="favorite-btn ' + (isFav ? 'active' : '') + '" onclick="app.toggleFavorite(' + meal.id + ', event)">' + (isFav ? '★' : '☆') + '</button>';
+                    item.innerHTML = '<div class="item-info"><div class="item-name" onclick="app.assignMealToDay(' + meal.id + ', false, null)" style="cursor: pointer; padding: 5px 0;">' + meal.nombre + '</div></div>';
                     list.appendChild(item);
                     hasItems = true;
                 });
@@ -483,11 +615,14 @@ const getApiBaseUrl = () => {
                 noResults.style.display = hasItems ? 'none' : 'block';
                 if (!hasItems) {
                     const trimmedSearch = this.getCurrentSearchText();
-                    const canCreateTemp = trimmedSearch.length > 0;
-                    noResultsText.textContent = canCreateTemp
+                    noResultsText.textContent = trimmedSearch.length > 0
                         ? `No existe "${trimmedSearch}"`
                         : '❌ No se encontraron recetas';
-                    addTempBtn.style.display = canCreateTemp ? 'inline-flex' : 'none';
+                    if (addTempBtn) {
+                        addTempBtn.style.display = trimmedSearch.length > 0 ? 'inline-flex' : 'none';
+                    }
+                } else if (addTempBtn) {
+                    addTempBtn.style.display = 'none';
                 }
             }
 
@@ -495,10 +630,147 @@ const getApiBaseUrl = () => {
                 return (document.getElementById('mealSearchInput')?.value || '').trim();
             }
 
+            parseStepsFromTextarea(textValue) {
+                if (!textValue) return [];
+                return textValue
+                    .split('\n')
+                    .map(step => step.trim())
+                    .filter(step => step.length > 0)
+                    .map(texto => ({ texto }));
+            }
+
+            getIngredientSelectionMap(formNumber) {
+                return formNumber === 2 ? this.selectedIngredientsForm2 : this.selectedIngredientsForm1;
+            }
+
+            updateIngredientSearch(formNumber) {
+                this.renderIngredientPicker(formNumber);
+            }
+
+            addIngredientToForm(formNumber, ingredientId) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                const ingredient = (this.ingredients || []).find(ing => ing.id === ingredientId);
+                if (!ingredient || map.has(ingredientId)) return;
+                map.set(ingredientId, {
+                    ingredient_id: ingredient.id,
+                    nombre: ingredient.nombre,
+                    spec: ''
+                });
+                this.renderIngredientPicker(formNumber);
+            }
+
+            removeIngredientFromForm(formNumber, ingredientId) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                map.delete(ingredientId);
+                this.renderIngredientPicker(formNumber);
+            }
+
+            updateIngredientSpec(formNumber, ingredientId, value) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                const current = map.get(ingredientId);
+                if (!current) return;
+                current.spec = value;
+                map.set(ingredientId, current);
+            }
+
+            getSelectedIngredientEntries(formNumber) {
+                const map = this.getIngredientSelectionMap(formNumber);
+                return Array.from(map.values()).map(entry => ({
+                    ingredient_id: entry.ingredient_id,
+                    spec: entry.spec && entry.spec.trim().length > 0 ? entry.spec.trim() : null
+                }));
+            }
+
+            renderIngredientPicker(formNumber) {
+                const searchInput = document.getElementById(`ingredientSearch${formNumber}`);
+                const resultsContainer = document.getElementById(`ingredientsResults${formNumber}`);
+                const selectedContainer = document.getElementById(`ingredientsSelected${formNumber}`);
+                if (!resultsContainer || !selectedContainer) return;
+
+                const map = this.getIngredientSelectionMap(formNumber);
+                const allIngredients = Array.isArray(this.ingredients) ? this.ingredients : [];
+                const term = (searchInput?.value || '').trim().toLowerCase();
+
+                resultsContainer.innerHTML = '';
+                if (allIngredients.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">No hay ingredientes definidos</div>';
+                } else {
+                    const filtered = allIngredients
+                        .filter(ing => (ing.nombre || '').toLowerCase().includes(term))
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
+                        .slice(0, 30);
+
+                    if (filtered.length === 0) {
+                        resultsContainer.innerHTML = '<div class="no-results">Sin resultados</div>';
+                    } else {
+                        filtered.forEach(ing => {
+                            const row = document.createElement('div');
+                            row.className = 'ingredient-picker-row';
+
+                            const name = document.createElement('span');
+                            name.className = 'ingredient-picker-name';
+                            name.textContent = ing.nombre;
+                            row.appendChild(name);
+
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.className = 'ingredient-add-btn';
+
+                            if (map.has(ing.id)) {
+                                button.textContent = 'Añadido';
+                                button.disabled = true;
+                                button.style.opacity = '0.65';
+                                button.style.cursor = 'default';
+                            } else {
+                                button.textContent = 'Añadir';
+                                button.onclick = () => this.addIngredientToForm(formNumber, ing.id);
+                            }
+
+                            row.appendChild(button);
+                            resultsContainer.appendChild(row);
+                        });
+                    }
+                }
+
+                selectedContainer.innerHTML = '';
+                const selected = Array.from(map.values()).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+                if (selected.length === 0) {
+                    selectedContainer.innerHTML = '<div class="no-results">Sin ingredientes seleccionados</div>';
+                    return;
+                }
+
+                selected.forEach(entry => {
+                    const row = document.createElement('div');
+                    row.className = 'ingredient-selected-row';
+
+                    const name = document.createElement('span');
+                    name.className = 'ingredient-picker-name';
+                    name.textContent = entry.nombre;
+                    row.appendChild(name);
+
+                    const specInput = document.createElement('input');
+                    specInput.type = 'text';
+                    specInput.className = 'ingredient-spec-input';
+                    specInput.placeholder = 'Cantidad / especificación';
+                    specInput.value = entry.spec || '';
+                    specInput.oninput = (e) => this.updateIngredientSpec(formNumber, entry.ingredient_id, e.target.value);
+                    row.appendChild(specInput);
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'ingredient-remove-btn';
+                    removeButton.textContent = 'Quitar';
+                    removeButton.onclick = () => this.removeIngredientFromForm(formNumber, entry.ingredient_id);
+                    row.appendChild(removeButton);
+
+                    selectedContainer.appendChild(row);
+                });
+            }
+
             assignSearchAsTempRecipe() {
                 const name = this.getCurrentSearchText();
                 if (!name) return;
-                this.assignMealToDay(-1, true, { nombre: name, precio: 0, isTemp: true });
+                this.assignMealToDay(-1, true, { nombre: name, isTemp: true });
             }
 
             clearFilters() {
@@ -715,7 +987,6 @@ const getApiBaseUrl = () => {
                     mealData = {
                         id: 'temp_' + Date.now(),
                         nombre: tempRecipe.nombre,
-                        precio: tempRecipe.precio,
                         isTemp: true
                     };
                 } else if (mealId === -1) {
@@ -766,7 +1037,7 @@ const getApiBaseUrl = () => {
 
             async createDailyMenu(data) {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/daily-menu`, {
+                    const response = await fetch(`${API_BASE_URL}/daily-menu/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
@@ -805,36 +1076,30 @@ const getApiBaseUrl = () => {
                 document.getElementById('totalMeals').textContent = this.meals.length;
                 document.getElementById('totalCategories').textContent = this.categories.length;
                 
-                let weekTotal = 0;
-                const weeks = this.getWeeks();
-                weeks[0].forEach(date => {
-                    const key = this.getDateKey(date);
-                    const menu = this.dailyMenus[key];
-                    if (menu?.meal_lunch) weekTotal += menu.meal_lunch.precio;
-                    if (menu?.meal_dinner) weekTotal += menu.meal_dinner.precio;
-                });
-                
-                document.getElementById('weekTotal').textContent = '€' + weekTotal.toFixed(2);
+                // Actualiza los contadores del resumen
+                document.getElementById('totalMeals').textContent = this.meals.length;
+                document.getElementById('totalCategories').textContent = this.categories.length;
             }
 
             setupEventListeners() {
                 document.getElementById('addMealForm').addEventListener('submit', (e) => this.handleAddMeal(e));
                 document.getElementById('addMealForm2').addEventListener('submit', (e) => this.handleAddMeal2(e));
                 document.getElementById('addCategoryForm').addEventListener('submit', (e) => this.handleAddCategory(e));
+                document.getElementById('addIngredientForm').addEventListener('submit', (e) => this.handleAddIngredient(e));
             }
 
             async handleAddMeal(e) {
                 e.preventDefault();
                 const name = document.getElementById('mealName').value;
-                const price = parseFloat(document.getElementById('mealPrice').value);
-                
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes input:checked')).map(cb => parseInt(cb.value));
+                const ingredientEntries = this.getSelectedIngredientEntries(1);
+                const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps')?.value || '');
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/meals`, {
+                    const response = await fetch(`${API_BASE_URL}/meals/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, precio: price, category_ids: categoryIds })
+                        body: JSON.stringify({ nombre: name, category_ids: categoryIds, ingredient_entries: ingredientEntries, steps })
                     });
 
                     if (response.ok) {
@@ -842,6 +1107,8 @@ const getApiBaseUrl = () => {
                         setTimeout(() => {
                             closeModal('addMealModal');
                             document.getElementById('addMealForm').reset();
+                            this.selectedIngredientsForm1.clear();
+                            this.renderIngredientPicker(1);
                         }, 1000);
                         await this.loadData();
                         this.renderCalendar();
@@ -856,27 +1123,36 @@ const getApiBaseUrl = () => {
             async handleAddMeal2(e) {
                 e.preventDefault();
                 const name = document.getElementById('mealName2').value;
-                const price = parseFloat(document.getElementById('mealPrice2').value);
-                
                 const categoryIds = Array.from(document.querySelectorAll('#categoriesCheckboxes2 input:checked')).map(cb => parseInt(cb.value));
+                const ingredientEntries = this.getSelectedIngredientEntries(2);
+                const steps = this.parseStepsFromTextarea(document.getElementById('mealSteps2')?.value || '');
+                const payload = { nombre: name, category_ids: categoryIds, ingredient_entries: ingredientEntries, steps };
+                const isEditing = Number.isInteger(this.editingMealId);
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/meals`, {
-                        method: 'POST',
+                    const url = isEditing ? `${API_BASE_URL}/meals/${this.editingMealId}` : `${API_BASE_URL}/meals/`;
+                    const method = isEditing ? 'PUT' : 'POST';
+                    const response = await fetch(url, {
+                        method,
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name, precio: price, category_ids: categoryIds })
+                        body: JSON.stringify(payload)
                     });
 
                     if (response.ok) {
-                        document.getElementById('addMealForm2').reset();
+                        this.showMessage('mealsMessage', isEditing ? 'Receta actualizada correctamente' : 'Receta creada correctamente', 'success');
+                        this.editingMealId = null;
+                        this.resetManageMealForm();
+                        this.updateManageMealFormMode();
                         await this.loadData();
                         this.renderMealsList();
                         this.renderCategoriesCheckboxes2();
+                        this.renderIngredientsCheckboxes2();
                     } else {
-                        alert('Error al crear la receta');
+                        const error = await response.json().catch(() => ({}));
+                        this.showMessage('mealsMessage', error.detail || 'Error al guardar la receta', 'error');
                     }
                 } catch (error) {
-                    alert('Error: ' + error.message);
+                    this.showMessage('mealsMessage', 'Error: ' + error.message, 'error');
                 }
             }
 
@@ -885,7 +1161,7 @@ const getApiBaseUrl = () => {
                 const name = document.getElementById('categoryName').value;
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/categories`, {
+                    const response = await fetch(`${API_BASE_URL}/categories/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nombre: name })
@@ -956,12 +1232,164 @@ const getApiBaseUrl = () => {
             renderMealsList() {
                 const container = document.getElementById('mealsList');
                 container.innerHTML = '';
-                this.meals.forEach(meal => {
+
+                const sortedMeals = [...this.meals].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
+                if (sortedMeals.length === 0) {
+                    const item = document.createElement('div');
+                    item.className = 'no-results';
+                    item.textContent = 'No hay recetas disponibles';
+                    container.appendChild(item);
+                    return;
+                }
+
+                sortedMeals.forEach(meal => {
                     const item = document.createElement('div');
                     item.className = 'item';
-                    item.innerHTML = `<div class="item-info"><div class="item-name">${meal.nombre}</div><div class="item-price">${(meal.precio || 0).toFixed(2)}€</div></div><div class="item-actions"><button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button><button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button></div>`;
+                    item.innerHTML = `
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-meta">${meal.ingredients?.length || 0} ingrediente(s)</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-small btn-edit" onclick="app.editMeal(${meal.id})">Editar</button>
+                            <button class="btn-small btn-delete" onclick="app.deleteMeal(${meal.id})">Eliminar</button>
+                        </div>
+                    `;
                     container.appendChild(item);
                 });
+            }
+
+            renderBringMealsList() {
+                const container = document.getElementById('bringMealsList');
+                if (!container) return;
+                container.innerHTML = '';
+
+                const windowInfo = this.getBringMealWindowInfo();
+                const sourceMeals = this.getMealsForBringWindow();
+                const sourceMealIds = new Set(sourceMeals.map(meal => meal.id));
+                this.selectedMealsForBring = this.selectedMealsForBring.filter(id => sourceMealIds.has(id));
+
+                const sortedMeals = [...sourceMeals].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
+                if (sortedMeals.length === 0) {
+                    const item = document.createElement('div');
+                    item.className = 'no-results';
+                    item.textContent = 'No hay recetas planificadas desde hoy para enviar a Bring!';
+                    container.appendChild(item);
+                    this.updateBringSelectionInfo();
+                    return;
+                }
+
+                sortedMeals.forEach(meal => {
+                    const selected = this.selectedMealsForBring.includes(meal.id);
+                    const schedule = this.getBringMealScheduleText(meal.id, windowInfo.mealScheduleById);
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerHTML = `
+                        <div class="item-select">
+                            <input type="checkbox" id="bring-select-meal-${meal.id}" ${selected ? 'checked' : ''} onchange="app.toggleMealSelectionForBring(${meal.id})">
+                            <label for="bring-select-meal-${meal.id}">Seleccionar</label>
+                        </div>
+                        <div class="item-info">
+                            <div class="item-name">${meal.nombre}</div>
+                            <div class="item-meta">${meal.ingredients?.length || 0} ingrediente(s)</div>
+                            <div class="item-meta">📅 ${schedule}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                this.updateBringSelectionInfo();
+            }
+
+            getBringMealWindowInfo() {
+                const todayKey = this.getDateKey(new Date());
+                const keys = Object.keys(this.dailyMenus).sort();
+
+                let lastKeyWithMeal = null;
+                keys.forEach(key => {
+                    if (key < todayKey) return;
+                    const menu = this.dailyMenus[key];
+                    if (!menu) return;
+                    if (menu.meal_lunch || menu.meal_dinner) {
+                        lastKeyWithMeal = key;
+                    }
+                });
+
+                const mealIds = new Set();
+                const mealScheduleById = {};
+
+                if (!lastKeyWithMeal) {
+                    return { todayKey, lastKeyWithMeal: null, mealIds, mealScheduleById };
+                }
+
+                keys.forEach(key => {
+                    if (key < todayKey || key > lastKeyWithMeal) return;
+                    const menu = this.dailyMenus[key];
+                    if (!menu) return;
+
+                    const entries = [
+                        { id: menu.meal_lunch_id, slot: 'Almuerzo' },
+                        { id: menu.meal_dinner_id, slot: 'Cena' }
+                    ];
+
+                    entries.forEach(entry => {
+                        if (!Number.isInteger(entry.id) || entry.id <= 0) return;
+                        mealIds.add(entry.id);
+                        if (!mealScheduleById[entry.id]) {
+                            mealScheduleById[entry.id] = [];
+                        }
+                        mealScheduleById[entry.id].push({ dateKey: key, slot: entry.slot });
+                    });
+                });
+
+                return { todayKey, lastKeyWithMeal, mealIds, mealScheduleById };
+            }
+
+            getMealsForBringWindow() {
+                const { mealIds } = this.getBringMealWindowInfo();
+                return this.meals.filter(meal => mealIds.has(meal.id));
+            }
+
+            getBringMealScheduleText(mealId, mealScheduleById) {
+                const scheduleItems = mealScheduleById?.[mealId] || [];
+                if (scheduleItems.length === 0) {
+                    return 'sin fecha planificada';
+                }
+
+                return scheduleItems
+                    .map(item => `${this.formatDateKeyForHumans(item.dateKey)} (${item.slot})`)
+                    .join(' · ');
+            }
+
+            formatDateKeyForHumans(key) {
+                const [year, month, day] = key.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            updateBringSelectionInfo() {
+                const info = document.getElementById('bringSelectionInfo');
+                if (!info) return;
+                const count = this.selectedMealsForBring.length;
+                if (this.manageMealsMode === 'bring') {
+                    const windowInfo = this.getBringMealWindowInfo();
+                    if (!windowInfo.lastKeyWithMeal) {
+                        info.textContent = 'Sin recetas planificadas desde hoy para Bring!';
+                        return;
+                    }
+
+                    const from = this.formatDateKeyForHumans(windowInfo.todayKey);
+                    const to = this.formatDateKeyForHumans(windowInfo.lastKeyWithMeal);
+                    const selectedText = count === 0
+                        ? 'sin selección'
+                        : `${count} seleccionada(s)`;
+                    info.textContent = `Ventana Bring!: ${from} - ${to} (${selectedText})`;
+                    return;
+                }
+
+                info.textContent = count === 0
+                    ? 'No hay recetas seleccionadas para Bring!'
+                    : `${count} receta(s) seleccionada(s) para Bring!`;
             }
 
             renderCategoriesCheckboxes2() {
@@ -975,6 +1403,180 @@ const getApiBaseUrl = () => {
                 });
             }
 
+            updateManageMealFormMode() {
+                const title = document.getElementById('manageMealFormTitle');
+                const submitBtn = document.getElementById('manageMealSubmitBtn');
+                const cancelBtn = document.getElementById('manageMealCancelEditBtn');
+                const isEditing = Number.isInteger(this.editingMealId);
+
+                if (title) title.textContent = isEditing ? 'Editar Receta' : 'Nueva Receta';
+                if (submitBtn) submitBtn.textContent = isEditing ? 'Guardar cambios' : 'Agregar Receta';
+                if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';
+            }
+
+            resetManageMealForm() {
+                const form = document.getElementById('addMealForm2');
+                if (form) form.reset();
+                document.querySelectorAll('#categoriesCheckboxes2 input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+                this.selectedIngredientsForm2.clear();
+                const searchInput = document.getElementById('ingredientSearch2');
+                if (searchInput) searchInput.value = '';
+                this.renderIngredientPicker(2);
+                const stepsField = document.getElementById('mealSteps2');
+                if (stepsField) stepsField.value = '';
+            }
+
+            populateManageMealFormForEdit(meal) {
+                if (!meal) return;
+
+                document.getElementById('mealName2').value = meal.nombre || '';
+
+                const categoryIds = (meal.categories || []).map(c => c.id);
+                document.querySelectorAll('#categoriesCheckboxes2 input[type="checkbox"]').forEach(cb => {
+                    cb.checked = categoryIds.includes(parseInt(cb.value));
+                });
+
+                this.selectedIngredientsForm2.clear();
+                (meal.ingredients || []).forEach(ing => {
+                    const ingredientId = ing.ingredient_id ?? ing.id;
+                    if (!ingredientId) return;
+                    this.selectedIngredientsForm2.set(ingredientId, {
+                        ingredient_id: ingredientId,
+                        nombre: ing.nombre || '',
+                        spec: ing.spec || ''
+                    });
+                });
+                this.renderIngredientPicker(2);
+
+                const stepsField = document.getElementById('mealSteps2');
+                if (stepsField) {
+                    const stepsText = (meal.steps || [])
+                        .map(step => step?.texto || '')
+                        .filter(text => text.trim().length > 0)
+                        .join('\n');
+                    stepsField.value = stepsText;
+                }
+            }
+
+            cancelMealEdit() {
+                this.editingMealId = null;
+                this.resetManageMealForm();
+                this.updateManageMealFormMode();
+                this.showMessage('mealsMessage', 'Edición cancelada', 'success');
+            }
+
+            renderIngredientsCheckboxes() {
+                this.renderIngredientPicker(1);
+            }
+
+            renderIngredientsCheckboxes2() {
+                this.renderIngredientPicker(2);
+            }
+
+            renderIngredientsList() {
+                const container = document.getElementById('ingredientsList');
+                if (!container) return;
+                container.innerHTML = '';
+                this.ingredients.forEach(ing => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.innerHTML = `<div class="item-info"><div class="item-name">${ing.nombre}</div></div><div class="item-actions"><button class="btn-small btn-delete" onclick="app.deleteIngredient(${ing.id})">Eliminar</button></div>`;
+                    container.appendChild(item);
+                });
+            }
+
+            async handleAddIngredient(e) {
+                e.preventDefault();
+                const name = document.getElementById('ingredientName').value;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/ingredients/`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre: name })
+                    });
+                    if (response.ok) {
+                        document.getElementById('ingredientName').value = '';
+                        await this.loadData();
+                        this.renderIngredientsList();
+                        this.renderIngredientsCheckboxes();
+                        this.renderIngredientsCheckboxes2();
+                    } else {
+                        const error = await response.json();
+                        this.showMessage('ingredientMessage', error.detail || 'Error al crear ingrediente', 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('ingredientMessage', 'Error: ' + error.message, 'error');
+                }
+            }
+
+            async deleteIngredient(id) {
+                if (!confirm('¿Eliminar este ingrediente?')) return;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/ingredients/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-API-Key': API_KEY }
+                    });
+                    if (response.ok) {
+                        await this.loadData();
+                        this.renderIngredientsList();
+                        this.renderIngredientsCheckboxes();
+                        this.renderIngredientsCheckboxes2();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+
+            toggleMealSelectionForBring(mealId) {
+                if (this.selectedMealsForBring.includes(mealId)) {
+                    this.selectedMealsForBring = this.selectedMealsForBring.filter(id => id !== mealId);
+                } else {
+                    this.selectedMealsForBring.push(mealId);
+                }
+                this.renderBringMealsList();
+            }
+
+            clearBringSelection() {
+                this.selectedMealsForBring = [];
+                this.renderBringMealsList();
+                this.showMessage('bringMessage', 'Selección limpia', 'success');
+            }
+
+            async addSelectedRecipeIngredientsToBring() {
+                if (this.selectedMealsForBring.length === 0) {
+                    alert('Selecciona al menos una receta.');
+                    return;
+                }
+                try {
+                    let { response, result } = await this.postBringIngredients(this.selectedMealsForBring);
+
+                    if (!response.ok && this.shouldPromptBringSettings(result?.detail)) {
+                        const configured = this.configureBringSettings();
+                        if (!configured) {
+                            this.showMessage('bringMessage', 'Configuración de Bring cancelada', 'error');
+                            return;
+                        }
+                        ({ response, result } = await this.postBringIngredients(this.selectedMealsForBring));
+                    }
+
+                    if (response.ok) {
+                        const skipped = result.skipped_duplicates?.length || 0;
+                        const errorsCount = result.errors?.length || 0;
+                        const detail = `Añadidos: ${result.added.length} · Duplicados omitidos: ${skipped} · Errores: ${errorsCount}`;
+                        this.showMessage('bringMessage', detail, errorsCount > 0 ? 'error' : 'success');
+                        this.selectedMealsForBring = [];
+                        this.renderBringMealsList();
+                    } else {
+                        this.showMessage('bringMessage', 'Error al añadir ingredientes: ' + (result.detail || JSON.stringify(result)), 'error');
+                    }
+                } catch (error) {
+                    console.error('Error añadiendo ingredientes a Bring:', error);
+                    this.showMessage('bringMessage', 'Error añadiendo ingredientes a Bring: ' + error.message, 'error');
+                }
+            }
+
             async deleteMeal(id) {
                 if (!confirm('¿Eliminar esta receta?')) return;
                 
@@ -986,6 +1588,11 @@ const getApiBaseUrl = () => {
 
                     if (response.ok) {
                         this.showMessage('mealsMessage', 'Receta eliminada', 'success');
+                        if (this.editingMealId === id) {
+                            this.editingMealId = null;
+                            this.resetManageMealForm();
+                            this.updateManageMealFormMode();
+                        }
                         await this.loadData();
                         this.renderMealsList();
                         this.renderCalendar();
@@ -996,28 +1603,66 @@ const getApiBaseUrl = () => {
             }
 
             editMeal(id) {
-                this.showMessage('mealsMessage', 'Editar recetas - próximamente', 'error');
+                const meal = this.meals.find(m => m.id === id);
+                if (!meal) {
+                    this.showMessage('mealsMessage', 'No se encontró la receta para editar', 'error');
+                    return;
+                }
+
+                this.editingMealId = id;
+                this.updateManageMealFormMode();
+                this.renderCategoriesCheckboxes2();
+                this.renderIngredientsCheckboxes2();
+                this.populateManageMealFormForEdit(meal);
+                this.showMessage('mealsMessage', `Editando receta: ${meal.nombre}`, 'success');
+
+                const nameInput = document.getElementById('mealName2');
+                if (nameInput) {
+                    nameInput.focus();
+                    nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
 
         function openAddMealModal() {
             if (!window.app) return;
             try {
+                document.getElementById('addMealForm')?.reset();
+                window.app.selectedIngredientsForm1.clear();
+                const searchInput = document.getElementById('ingredientSearch1');
+                if (searchInput) searchInput.value = '';
                 window.app.renderCategoriesCheckboxes();
+                window.app.renderIngredientsCheckboxes();
                 document.getElementById('addMealModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }
         }
 
-        function openManageMealsModal() {
+        function openManageMealsModal(mode = 'all') {
             if (!window.app) return;
             try {
-                window.app.renderMealsList();
+                window.app.manageMealsMode = 'all';
+                window.app.editingMealId = null;
                 window.app.renderCategoriesCheckboxes2();
+                window.app.renderIngredientsCheckboxes2();
+                window.app.resetManageMealForm();
+                window.app.updateManageMealFormMode();
+                window.app.renderMealsList();
                 document.getElementById('manageMealsModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
+            }
+        }
+
+        function openBringModal() {
+            if (!window.app) return;
+            try {
+                window.app.manageMealsMode = 'bring';
+                window.app.renderBringMealsList();
+                document.getElementById('bringModal').classList.add('active');
+            } catch (error) {
+                console.error('❌ Error abriendo modal Bring:', error);
             }
         }
 
@@ -1026,6 +1671,16 @@ const getApiBaseUrl = () => {
             try {
                 window.app.renderCategoriesList();
                 document.getElementById('manageCategoriesModal').classList.add('active');
+            } catch (error) {
+                console.error('❌ Error abriendo modal:', error);
+            }
+        }
+
+        function openManageIngredientsModal() {
+            if (!window.app) return;
+            try {
+                window.app.renderIngredientsList();
+                document.getElementById('manageIngredientsModal').classList.add('active');
             } catch (error) {
                 console.error('❌ Error abriendo modal:', error);
             }

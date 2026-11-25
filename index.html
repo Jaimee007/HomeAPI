@@ -21,16 +21,17 @@
             <div class="sidebar">
                 <div class="sidebar-card">
                     <h3>➕ Acciones Rápidas</h3>
-                    <button class="btn-primary" onclick="openManageMealsModal()">📖 Recetas</button>
-                    <button class="btn-secondary" onclick="openManageCategoriesModal()" style="margin-top: 10px;">⚙️ Categorías</button>
+                    <button class="btn-primary" onclick="openManageMealsModal('all')">📖 Recetas</button>
+                    <button class="btn-secondary quick-action-spaced" onclick="openManageIngredientsModal()">🥕 Ingredientes</button>
+                    <button class="btn-secondary quick-action-spaced" onclick="openManageCategoriesModal()">⚙️ Categorías</button>
+                    <button class="btn-primary quick-action-spaced" onclick="openBringModal()">🛒 Generar lista Bring!</button>
                 </div>
 
                 <div class="sidebar-card">
                     <h3>📊 Resumen</h3>
                     <div style="font-size: 0.9rem; color: #888;">
                         <p style="margin-bottom: 8px;"><strong>Total de recetas:</strong> <span id="totalMeals">0</span></p>
-                        <p style="margin-bottom: 8px;"><strong>Categorías:</strong> <span id="totalCategories">0</span></p>
-                        <p><strong>Dinero/semana:</strong> <span id="weekTotal">€0.00</span></p>
+                        <p><strong>Categorías:</strong> <span id="totalCategories">0</span></p>
                     </div>
                 </div>
 
@@ -103,13 +104,19 @@
                     <label for="mealName">Nombre de la Receta</label>
                     <input type="text" id="mealName" required placeholder="Ej: Pasta a la Carbonara">
                 </div>
-                <div class="form-group">
-                    <label for="mealPrice">Precio (€)</label>
-                    <input type="number" id="mealPrice" step="0.01" min="0" required placeholder="Ej: 5.50">
-                </div>
-                <div class="form-group">
+                    <div class="form-group">
                     <label>Categorías</label>
                     <div id="categoriesCheckboxes" class="checkbox-group"></div>
+                </div>
+                <div class="form-group">
+                    <label>Ingredientes</label>
+                    <input type="text" id="ingredientSearch1" class="search-input" placeholder="Buscar ingrediente..." oninput="app.updateIngredientSearch(1)">
+                    <div id="ingredientsResults1" class="ingredient-results"></div>
+                    <div id="ingredientsSelected1" class="ingredient-selected"></div>
+                </div>
+                <div class="form-group">
+                    <label for="mealSteps">Pasos (uno por línea)</label>
+                    <textarea id="mealSteps" placeholder="Ej:\nSofríe la cebolla\nAñade parmesano\nSirve caliente"></textarea>
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-cancel" onclick="closeModal('addMealModal')">Cancelar</button>
@@ -128,23 +135,91 @@
             </div>
             <div id="mealsMessage"></div>
             
-            <h3 style="margin-top: 20px; margin-bottom: 10px; color: #555; font-size: 1rem;">Nueva Receta</h3>
+            <h3 id="manageMealFormTitle" style="margin-top: 20px; margin-bottom: 10px; color: #555; font-size: 1rem;">Nueva Receta</h3>
             <form id="addMealForm2">
                 <div class="form-group">
                     <input type="text" id="mealName2" required placeholder="Nombre de la receta">
                 </div>
                 <div class="form-group">
-                    <input type="number" id="mealPrice2" step="0.01" min="0" required placeholder="Precio (€)">
-                </div>
-                <div class="form-group">
                     <label>Categorías</label>
                     <div id="categoriesCheckboxes2" class="checkbox-group"></div>
                 </div>
-                <button type="submit" class="btn-success" style="width: 100%; margin-bottom: 20px;">Agregar Receta</button>
+                <div class="form-group">
+                    <label>Ingredientes</label>
+                    <input type="text" id="ingredientSearch2" class="search-input" placeholder="Buscar ingrediente..." oninput="app.updateIngredientSearch(2)">
+                    <div id="ingredientsResults2" class="ingredient-results"></div>
+                    <div id="ingredientsSelected2" class="ingredient-selected"></div>
+                </div>
+                <div class="form-group">
+                    <label for="mealSteps2">Pasos (uno por línea)</label>
+                    <textarea id="mealSteps2" placeholder="Ej:\nSofríe la cebolla\nAñade parmesano\nSirve caliente"></textarea>
+                </div>
+                <button id="manageMealSubmitBtn" type="submit" class="btn-success" style="width: 100%; margin-bottom: 10px;">Agregar Receta</button>
+                <button id="manageMealCancelEditBtn" type="button" class="btn-cancel" style="width: 100%; margin-bottom: 20px; display: none;" onclick="app.cancelMealEdit()">Cancelar edición</button>
             </form>
 
             <h3 style="margin-bottom: 10px; color: #555; font-size: 1rem;">Recetas Existentes</h3>
             <div id="mealsList" class="items-list"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Generar Lista Bring -->
+    <div id="bringModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Generar Lista Bring!</span>
+                <button class="close-btn" onclick="closeModal('bringModal')">×</button>
+            </div>
+            <div class="bring-panel">
+                <button type="button" class="bring-lock-btn" onclick="app.configureBringSettings()" title="Configurar cuenta Bring" aria-label="Configurar cuenta Bring">🔐</button>
+                <p id="bringSelectionInfo" class="bring-selection">No hay recetas seleccionadas para Bring!</p>
+            </div>
+            <button type="button" class="btn-secondary bring-add-btn" onclick="app.addSelectedRecipeIngredientsToBring()">➕ Añadir ingredientes seleccionados a Bring</button>
+            <div id="bringMessage"></div>
+            <h3 style="margin-bottom: 10px; color: #555; font-size: 1rem;">Recetas planificadas</h3>
+            <div id="bringMealsList" class="items-list"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalle de Receta -->
+    <div id="mealDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="mealDetailsTitle">Detalle de Receta</span>
+                <button class="close-btn" onclick="closeModal('mealDetailsModal')">×</button>
+            </div>
+            <div class="meal-details-section">
+                <h4>Ingredientes</h4>
+                <ul id="mealDetailsIngredients" class="details-list"></ul>
+            </div>
+            <div class="meal-details-section">
+                <h4>Pasos</h4>
+                <ol id="mealDetailsSteps" class="details-list details-steps"></ol>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('mealDetailsModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gestionar Ingredientes -->
+    <div id="manageIngredientsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Gestionar Ingredientes</span>
+                <button class="close-btn" onclick="closeModal('manageIngredientsModal')">×</button>
+            </div>
+            <div id="ingredientMessage"></div>
+            <h3 style="margin-top: 20px; margin-bottom: 10px; color: #555; font-size: 1rem;">Nuevo Ingrediente</h3>
+            <form id="addIngredientForm">
+                <div class="form-group">
+                    <input type="text" id="ingredientName" required placeholder="Nombre del ingrediente">
+                </div>
+                <button type="submit" class="btn-success" style="width: 100%; margin-bottom: 20px;">Agregar Ingrediente</button>
+            </form>
+
+            <h3 style="margin-bottom: 10px; color: #555; font-size: 1rem;">Ingredientes Existentes</h3>
+            <div id="ingredientsList" class="items-list"></div>
         </div>
     </div>
 

@@ -4,8 +4,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import os
 
+from . import calendar_sync
 from .db import init_database
-from .routers import categories, meals, daily_menu
+from .routers import categories, meals, daily_menu, ingredients, bring, calendar
 
 # Inicializar base de datos
 init_database()
@@ -18,11 +19,18 @@ app = FastAPI(
 
 # API Key para autenticación (puede ser modificada por variable de entorno)
 API_KEY = os.getenv("API_KEY", "homeapi_default_key_2024")
+DISABLE_API_KEY_AUTH = os.getenv("DISABLE_API_KEY_AUTH", "0").lower() in {"1", "true", "yes"}
 
 
 # Middleware de autenticación por API Key
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if DISABLE_API_KEY_AUTH:
+            return await call_next(request)
+
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Endpoints públicos que no requieren autenticación
         public_endpoints = ["/docs", "/openapi.json", "/redoc", "/"]
         
@@ -46,7 +54,7 @@ app.add_middleware(AuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -54,7 +62,21 @@ app.add_middleware(
 # Registrar routers
 app.include_router(categories.router)
 app.include_router(meals.router)
+app.include_router(ingredients.router)
+app.include_router(bring.router)
 app.include_router(daily_menu.router)
+app.include_router(calendar.router)
+
+
+@app.on_event("startup")
+def iniciar_sincronizacion_calendario():
+    """Arranca el worker que publica el menú en Google Calendar (si está activo)"""
+    calendar_sync.start_worker()
+
+
+@app.on_event("shutdown")
+def detener_sincronizacion_calendario():
+    calendar_sync.stop_worker()
 
 
 @app.get("/", tags=["root"])
